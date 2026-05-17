@@ -1,0 +1,4264 @@
+{
+  "version": "16.10.1",
+  "source": "dragontail-16.10.1/16.10.1/data/en_US/champion.json",
+  "champions": [
+    {
+      "id": "Aatrox",
+      "key": "266",
+      "name": "Aatrox",
+      "title": "the Darkin Blade",
+      "tags": [
+        "Fighter"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 4,
+        "magic": 3,
+        "difficulty": 4
+      },
+      "image": "Aatrox.png",
+      "stats": {
+        "hp": 650,
+        "armor": 38,
+        "spellblock": 32,
+        "attackdamage": 60,
+        "attackrange": 175,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Ahri",
+      "key": "103",
+      "name": "Ahri",
+      "title": "the Nine-Tailed Fox",
+      "tags": [
+        "Mage",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 4,
+        "magic": 8,
+        "difficulty": 5
+      },
+      "image": "Ahri.png",
+      "stats": {
+        "hp": 590,
+        "armor": 21,
+        "spellblock": 30,
+        "attackdamage": 53,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Akali",
+      "key": "84",
+      "name": "Akali",
+      "title": "the Rogue Assassin",
+      "tags": [
+        "Assassin"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 3,
+        "magic": 8,
+        "difficulty": 7
+      },
+      "image": "Akali.png",
+      "stats": {
+        "hp": 600,
+        "armor": 23,
+        "spellblock": 37,
+        "attackdamage": 62,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Akshan",
+      "key": "166",
+      "name": "Akshan",
+      "title": "the Rogue Sentinel",
+      "tags": [
+        "Marksman",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 0,
+        "defense": 0,
+        "magic": 0,
+        "difficulty": 0
+      },
+      "image": "Akshan.png",
+      "stats": {
+        "hp": 610,
+        "armor": 26,
+        "spellblock": 30,
+        "attackdamage": 52,
+        "attackrange": 500,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Alistar",
+      "key": "12",
+      "name": "Alistar",
+      "title": "the Minotaur",
+      "tags": [
+        "Tank",
+        "Support"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 9,
+        "magic": 5,
+        "difficulty": 7
+      },
+      "image": "Alistar.png",
+      "stats": {
+        "hp": 685,
+        "armor": 40,
+        "spellblock": 32,
+        "attackdamage": 62,
+        "attackrange": 125,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Ambessa",
+      "key": "799",
+      "name": "Ambessa",
+      "title": "Matriarch of War",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 2,
+        "magic": 0,
+        "difficulty": 10
+      },
+      "image": "Ambessa.png",
+      "stats": {
+        "hp": 630,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 63,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Amumu",
+      "key": "32",
+      "name": "Amumu",
+      "title": "the Sad Mummy",
+      "tags": [
+        "Tank",
+        "Support"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 6,
+        "magic": 8,
+        "difficulty": 3
+      },
+      "image": "Amumu.png",
+      "stats": {
+        "hp": 685,
+        "armor": 33,
+        "spellblock": 32,
+        "attackdamage": 57,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Anivia",
+      "key": "34",
+      "name": "Anivia",
+      "title": "the Cryophoenix",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 1,
+        "defense": 4,
+        "magic": 10,
+        "difficulty": 10
+      },
+      "image": "Anivia.png",
+      "stats": {
+        "hp": 550,
+        "armor": 19,
+        "spellblock": 30,
+        "attackdamage": 51,
+        "attackrange": 600,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Annie",
+      "key": "1",
+      "name": "Annie",
+      "title": "the Dark Child",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 3,
+        "magic": 10,
+        "difficulty": 6
+      },
+      "image": "Annie.png",
+      "stats": {
+        "hp": 560,
+        "armor": 23,
+        "spellblock": 30,
+        "attackdamage": 50,
+        "attackrange": 625,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Aphelios",
+      "key": "523",
+      "name": "Aphelios",
+      "title": "the Weapon of the Faithful",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 2,
+        "magic": 1,
+        "difficulty": 10
+      },
+      "image": "Aphelios.png",
+      "stats": {
+        "hp": 600,
+        "armor": 26,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 550,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Ashe",
+      "key": "22",
+      "name": "Ashe",
+      "title": "the Frost Archer",
+      "tags": [
+        "Marksman",
+        "Support"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 3,
+        "magic": 2,
+        "difficulty": 4
+      },
+      "image": "Ashe.png",
+      "stats": {
+        "hp": 610,
+        "armor": 26,
+        "spellblock": 30,
+        "attackdamage": 59,
+        "attackrange": 600,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "AurelionSol",
+      "key": "136",
+      "name": "Aurelion Sol",
+      "title": "The Star Forger",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 3,
+        "magic": 8,
+        "difficulty": 7
+      },
+      "image": "AurelionSol.png",
+      "stats": {
+        "hp": 600,
+        "armor": 22,
+        "spellblock": 30,
+        "attackdamage": 58,
+        "attackrange": 550,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Aurora",
+      "key": "893",
+      "name": "Aurora",
+      "title": "the Witch Between Worlds",
+      "tags": [
+        "Mage",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 4,
+        "magic": 8,
+        "difficulty": 5
+      },
+      "image": "Aurora.png",
+      "stats": {
+        "hp": 607,
+        "armor": 23,
+        "spellblock": 32,
+        "attackdamage": 53,
+        "attackrange": 550,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Azir",
+      "key": "268",
+      "name": "Azir",
+      "title": "the Emperor of the Sands",
+      "tags": [
+        "Mage",
+        "Marksman"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 3,
+        "magic": 8,
+        "difficulty": 9
+      },
+      "image": "Azir.png",
+      "stats": {
+        "hp": 575,
+        "armor": 25,
+        "spellblock": 30,
+        "attackdamage": 56,
+        "attackrange": 525,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Bard",
+      "key": "432",
+      "name": "Bard",
+      "title": "the Wandering Caretaker",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 4,
+        "magic": 5,
+        "difficulty": 9
+      },
+      "image": "Bard.png",
+      "stats": {
+        "hp": 630,
+        "armor": 34,
+        "spellblock": 30,
+        "attackdamage": 52,
+        "attackrange": 500,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Belveth",
+      "key": "200",
+      "name": "Bel'Veth",
+      "title": "the Empress of the Void",
+      "tags": [
+        "Fighter"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 2,
+        "magic": 7,
+        "difficulty": 10
+      },
+      "image": "Belveth.png",
+      "stats": {
+        "hp": 610,
+        "armor": 32,
+        "spellblock": 32,
+        "attackdamage": 60,
+        "attackrange": 150,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Blitzcrank",
+      "key": "53",
+      "name": "Blitzcrank",
+      "title": "the Great Steam Golem",
+      "tags": [
+        "Tank",
+        "Support"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 8,
+        "magic": 5,
+        "difficulty": 4
+      },
+      "image": "Blitzcrank.png",
+      "stats": {
+        "hp": 600,
+        "armor": 37,
+        "spellblock": 32,
+        "attackdamage": 62,
+        "attackrange": 125,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Brand",
+      "key": "63",
+      "name": "Brand",
+      "title": "the Burning Vengeance",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 2,
+        "magic": 9,
+        "difficulty": 4
+      },
+      "image": "Brand.png",
+      "stats": {
+        "hp": 570,
+        "armor": 27,
+        "spellblock": 30,
+        "attackdamage": 57,
+        "attackrange": 550,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Braum",
+      "key": "201",
+      "name": "Braum",
+      "title": "the Heart of the Freljord",
+      "tags": [
+        "Tank",
+        "Support"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 9,
+        "magic": 4,
+        "difficulty": 3
+      },
+      "image": "Braum.png",
+      "stats": {
+        "hp": 610,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 55,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Briar",
+      "key": "233",
+      "name": "Briar",
+      "title": "the Restrained Hunger",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 3
+      },
+      "image": "Briar.png",
+      "stats": {
+        "hp": 625,
+        "armor": 30,
+        "spellblock": 32,
+        "attackdamage": 60,
+        "attackrange": 125,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Caitlyn",
+      "key": "51",
+      "name": "Caitlyn",
+      "title": "the Sheriff of Piltover",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 2,
+        "magic": 2,
+        "difficulty": 6
+      },
+      "image": "Caitlyn.png",
+      "stats": {
+        "hp": 580,
+        "armor": 27,
+        "spellblock": 30,
+        "attackdamage": 62,
+        "attackrange": 650,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Camille",
+      "key": "164",
+      "name": "Camille",
+      "title": "the Steel Shadow",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 6,
+        "magic": 3,
+        "difficulty": 4
+      },
+      "image": "Camille.png",
+      "stats": {
+        "hp": 650,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 68,
+        "attackrange": 125,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Cassiopeia",
+      "key": "69",
+      "name": "Cassiopeia",
+      "title": "the Serpent's Embrace",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 3,
+        "magic": 9,
+        "difficulty": 10
+      },
+      "image": "Cassiopeia.png",
+      "stats": {
+        "hp": 630,
+        "armor": 18,
+        "spellblock": 32,
+        "attackdamage": 53,
+        "attackrange": 550,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Chogath",
+      "key": "31",
+      "name": "Cho'Gath",
+      "title": "the Terror of the Void",
+      "tags": [
+        "Tank",
+        "Mage"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 7,
+        "magic": 7,
+        "difficulty": 5
+      },
+      "image": "Chogath.png",
+      "stats": {
+        "hp": 644,
+        "armor": 38,
+        "spellblock": 32,
+        "attackdamage": 69,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Corki",
+      "key": "42",
+      "name": "Corki",
+      "title": "the Daring Bombardier",
+      "tags": [
+        "Marksman",
+        "Mage"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 3,
+        "magic": 6,
+        "difficulty": 6
+      },
+      "image": "Corki.png",
+      "stats": {
+        "hp": 610,
+        "armor": 27,
+        "spellblock": 30,
+        "attackdamage": 52,
+        "attackrange": 550,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Darius",
+      "key": "122",
+      "name": "Darius",
+      "title": "the Hand of Noxus",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 5,
+        "magic": 1,
+        "difficulty": 2
+      },
+      "image": "Darius.png",
+      "stats": {
+        "hp": 652,
+        "armor": 37,
+        "spellblock": 32,
+        "attackdamage": 64,
+        "attackrange": 175,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Diana",
+      "key": "131",
+      "name": "Diana",
+      "title": "Scorn of the Moon",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 6,
+        "magic": 8,
+        "difficulty": 4
+      },
+      "image": "Diana.png",
+      "stats": {
+        "hp": 640,
+        "armor": 31,
+        "spellblock": 32,
+        "attackdamage": 57,
+        "attackrange": 150,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "DrMundo",
+      "key": "36",
+      "name": "Dr. Mundo",
+      "title": "the Madman of Zaun",
+      "tags": [
+        "Tank",
+        "Fighter"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 7,
+        "magic": 6,
+        "difficulty": 5
+      },
+      "image": "DrMundo.png",
+      "stats": {
+        "hp": 640,
+        "armor": 32,
+        "spellblock": 29,
+        "attackdamage": 61,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Draven",
+      "key": "119",
+      "name": "Draven",
+      "title": "the Glorious Executioner",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 3,
+        "magic": 1,
+        "difficulty": 8
+      },
+      "image": "Draven.png",
+      "stats": {
+        "hp": 675,
+        "armor": 29,
+        "spellblock": 30,
+        "attackdamage": 62,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Ekko",
+      "key": "245",
+      "name": "Ekko",
+      "title": "the Boy Who Shattered Time",
+      "tags": [
+        "Assassin",
+        "Mage"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 3,
+        "magic": 7,
+        "difficulty": 8
+      },
+      "image": "Ekko.png",
+      "stats": {
+        "hp": 655,
+        "armor": 32,
+        "spellblock": 32,
+        "attackdamage": 58,
+        "attackrange": 125,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Elise",
+      "key": "60",
+      "name": "Elise",
+      "title": "the Spider Queen",
+      "tags": [
+        "Assassin",
+        "Mage"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 5,
+        "magic": 7,
+        "difficulty": 9
+      },
+      "image": "Elise.png",
+      "stats": {
+        "hp": 620,
+        "armor": 30,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Evelynn",
+      "key": "28",
+      "name": "Evelynn",
+      "title": "Agony's Embrace",
+      "tags": [
+        "Assassin",
+        "Mage"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 2,
+        "magic": 7,
+        "difficulty": 10
+      },
+      "image": "Evelynn.png",
+      "stats": {
+        "hp": 642,
+        "armor": 37,
+        "spellblock": 32,
+        "attackdamage": 61,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Ezreal",
+      "key": "81",
+      "name": "Ezreal",
+      "title": "the Prodigal Explorer",
+      "tags": [
+        "Marksman",
+        "Mage"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 2,
+        "magic": 6,
+        "difficulty": 7
+      },
+      "image": "Ezreal.png",
+      "stats": {
+        "hp": 600,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 60,
+        "attackrange": 550,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Fiddlesticks",
+      "key": "9",
+      "name": "Fiddlesticks",
+      "title": "the Ancient Fear",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 3,
+        "magic": 9,
+        "difficulty": 9
+      },
+      "image": "Fiddlesticks.png",
+      "stats": {
+        "hp": 650,
+        "armor": 34,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 480,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Fiora",
+      "key": "114",
+      "name": "Fiora",
+      "title": "the Grand Duelist",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 10,
+        "defense": 4,
+        "magic": 2,
+        "difficulty": 3
+      },
+      "image": "Fiora.png",
+      "stats": {
+        "hp": 620,
+        "armor": 33,
+        "spellblock": 32,
+        "attackdamage": 66,
+        "attackrange": 150,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Fizz",
+      "key": "105",
+      "name": "Fizz",
+      "title": "the Tidal Trickster",
+      "tags": [
+        "Assassin",
+        "Fighter"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 4,
+        "magic": 7,
+        "difficulty": 6
+      },
+      "image": "Fizz.png",
+      "stats": {
+        "hp": 640,
+        "armor": 26,
+        "spellblock": 32,
+        "attackdamage": 58,
+        "attackrange": 175,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Galio",
+      "key": "3",
+      "name": "Galio",
+      "title": "the Colossus",
+      "tags": [
+        "Tank",
+        "Mage"
+      ],
+      "info": {
+        "attack": 1,
+        "defense": 10,
+        "magic": 6,
+        "difficulty": 5
+      },
+      "image": "Galio.png",
+      "stats": {
+        "hp": 600,
+        "armor": 24,
+        "spellblock": 32,
+        "attackdamage": 59,
+        "attackrange": 150,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Gangplank",
+      "key": "41",
+      "name": "Gangplank",
+      "title": "the Saltwater Scourge",
+      "tags": [
+        "Fighter"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 6,
+        "magic": 4,
+        "difficulty": 9
+      },
+      "image": "Gangplank.png",
+      "stats": {
+        "hp": 630,
+        "armor": 31,
+        "spellblock": 32,
+        "attackdamage": 64,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Garen",
+      "key": "86",
+      "name": "Garen",
+      "title": "The Might of Demacia",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 7,
+        "magic": 1,
+        "difficulty": 5
+      },
+      "image": "Garen.png",
+      "stats": {
+        "hp": 690,
+        "armor": 38,
+        "spellblock": 32,
+        "attackdamage": 69,
+        "attackrange": 175,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Gnar",
+      "key": "150",
+      "name": "Gnar",
+      "title": "the Missing Link",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 5,
+        "magic": 5,
+        "difficulty": 8
+      },
+      "image": "Gnar.png",
+      "stats": {
+        "hp": 540,
+        "armor": 32,
+        "spellblock": 30,
+        "attackdamage": 60,
+        "attackrange": 175,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Gragas",
+      "key": "79",
+      "name": "Gragas",
+      "title": "the Rabble Rouser",
+      "tags": [
+        "Fighter",
+        "Mage"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 7,
+        "magic": 6,
+        "difficulty": 5
+      },
+      "image": "Gragas.png",
+      "stats": {
+        "hp": 640,
+        "armor": 38,
+        "spellblock": 32,
+        "attackdamage": 64,
+        "attackrange": 125,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Graves",
+      "key": "104",
+      "name": "Graves",
+      "title": "the Outlaw",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 3
+      },
+      "image": "Graves.png",
+      "stats": {
+        "hp": 625,
+        "armor": 33,
+        "spellblock": 30,
+        "attackdamage": 66,
+        "attackrange": 425,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Gwen",
+      "key": "887",
+      "name": "Gwen",
+      "title": "The Hallowed Seamstress",
+      "tags": [
+        "Fighter"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 4,
+        "magic": 5,
+        "difficulty": 5
+      },
+      "image": "Gwen.png",
+      "stats": {
+        "hp": 620,
+        "armor": 39,
+        "spellblock": 32,
+        "attackdamage": 63,
+        "attackrange": 150,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Hecarim",
+      "key": "120",
+      "name": "Hecarim",
+      "title": "the Shadow of War",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 6,
+        "magic": 4,
+        "difficulty": 6
+      },
+      "image": "Hecarim.png",
+      "stats": {
+        "hp": 625,
+        "armor": 32,
+        "spellblock": 32,
+        "attackdamage": 66,
+        "attackrange": 175,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Heimerdinger",
+      "key": "74",
+      "name": "Heimerdinger",
+      "title": "the Revered Inventor",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 6,
+        "magic": 8,
+        "difficulty": 8
+      },
+      "image": "Heimerdinger.png",
+      "stats": {
+        "hp": 558,
+        "armor": 19,
+        "spellblock": 30,
+        "attackdamage": 56,
+        "attackrange": 550,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Hwei",
+      "key": "910",
+      "name": "Hwei",
+      "title": "the Visionary",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 1,
+        "magic": 8,
+        "difficulty": 9
+      },
+      "image": "Hwei.png",
+      "stats": {
+        "hp": 580,
+        "armor": 21,
+        "spellblock": 30,
+        "attackdamage": 54,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Illaoi",
+      "key": "420",
+      "name": "Illaoi",
+      "title": "the Kraken Priestess",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 6,
+        "magic": 3,
+        "difficulty": 4
+      },
+      "image": "Illaoi.png",
+      "stats": {
+        "hp": 656,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 65,
+        "attackrange": 125,
+        "movespeed": 350
+      }
+    },
+    {
+      "id": "Irelia",
+      "key": "39",
+      "name": "Irelia",
+      "title": "the Blade Dancer",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 4,
+        "magic": 5,
+        "difficulty": 5
+      },
+      "image": "Irelia.png",
+      "stats": {
+        "hp": 630,
+        "armor": 36,
+        "spellblock": 30,
+        "attackdamage": 65,
+        "attackrange": 200,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Ivern",
+      "key": "427",
+      "name": "Ivern",
+      "title": "the Green Father",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 5,
+        "magic": 7,
+        "difficulty": 7
+      },
+      "image": "Ivern.png",
+      "stats": {
+        "hp": 630,
+        "armor": 27,
+        "spellblock": 30,
+        "attackdamage": 50,
+        "attackrange": 475,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Janna",
+      "key": "40",
+      "name": "Janna",
+      "title": "the Storm's Fury",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 5,
+        "magic": 7,
+        "difficulty": 7
+      },
+      "image": "Janna.png",
+      "stats": {
+        "hp": 570,
+        "armor": 28,
+        "spellblock": 30,
+        "attackdamage": 47,
+        "attackrange": 550,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "JarvanIV",
+      "key": "59",
+      "name": "Jarvan IV",
+      "title": "the Exemplar of Demacia",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 8,
+        "magic": 3,
+        "difficulty": 5
+      },
+      "image": "JarvanIV.png",
+      "stats": {
+        "hp": 640,
+        "armor": 36,
+        "spellblock": 32,
+        "attackdamage": 64,
+        "attackrange": 175,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Jax",
+      "key": "24",
+      "name": "Jax",
+      "title": "Grandmaster at Arms",
+      "tags": [
+        "Fighter"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 5,
+        "magic": 7,
+        "difficulty": 5
+      },
+      "image": "Jax.png",
+      "stats": {
+        "hp": 650,
+        "armor": 36,
+        "spellblock": 32,
+        "attackdamage": 68,
+        "attackrange": 125,
+        "movespeed": 350
+      }
+    },
+    {
+      "id": "Jayce",
+      "key": "126",
+      "name": "Jayce",
+      "title": "the Defender of Tomorrow",
+      "tags": [
+        "Fighter",
+        "Marksman"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 4,
+        "magic": 3,
+        "difficulty": 7
+      },
+      "image": "Jayce.png",
+      "stats": {
+        "hp": 590,
+        "armor": 22,
+        "spellblock": 30,
+        "attackdamage": 59,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Jhin",
+      "key": "202",
+      "name": "Jhin",
+      "title": "the Virtuoso",
+      "tags": [
+        "Marksman",
+        "Mage"
+      ],
+      "info": {
+        "attack": 10,
+        "defense": 2,
+        "magic": 6,
+        "difficulty": 6
+      },
+      "image": "Jhin.png",
+      "stats": {
+        "hp": 655,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 61,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Jinx",
+      "key": "222",
+      "name": "Jinx",
+      "title": "the Loose Cannon",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 2,
+        "magic": 4,
+        "difficulty": 6
+      },
+      "image": "Jinx.png",
+      "stats": {
+        "hp": 630,
+        "armor": 26,
+        "spellblock": 30,
+        "attackdamage": 59,
+        "attackrange": 525,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "KSante",
+      "key": "897",
+      "name": "K'Sante",
+      "title": "the Pride of Nazumah",
+      "tags": [
+        "Tank",
+        "Fighter"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 8,
+        "magic": 7,
+        "difficulty": 9
+      },
+      "image": "KSante.png",
+      "stats": {
+        "hp": 625,
+        "armor": 36,
+        "spellblock": 30,
+        "attackdamage": 64,
+        "attackrange": 150,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Kaisa",
+      "key": "145",
+      "name": "Kai'Sa",
+      "title": "Daughter of the Void",
+      "tags": [
+        "Marksman",
+        "Mage"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 6
+      },
+      "image": "Kaisa.png",
+      "stats": {
+        "hp": 640,
+        "armor": 25,
+        "spellblock": 30,
+        "attackdamage": 59,
+        "attackrange": 525,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Kalista",
+      "key": "429",
+      "name": "Kalista",
+      "title": "the Spear of Vengeance",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 2,
+        "magic": 4,
+        "difficulty": 7
+      },
+      "image": "Kalista.png",
+      "stats": {
+        "hp": 560,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 57,
+        "attackrange": 525,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Karma",
+      "key": "43",
+      "name": "Karma",
+      "title": "the Enlightened One",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 1,
+        "defense": 7,
+        "magic": 8,
+        "difficulty": 5
+      },
+      "image": "Karma.png",
+      "stats": {
+        "hp": 630,
+        "armor": 28,
+        "spellblock": 30,
+        "attackdamage": 49,
+        "attackrange": 525,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Karthus",
+      "key": "30",
+      "name": "Karthus",
+      "title": "the Deathsinger",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 2,
+        "magic": 10,
+        "difficulty": 7
+      },
+      "image": "Karthus.png",
+      "stats": {
+        "hp": 620,
+        "armor": 21,
+        "spellblock": 30,
+        "attackdamage": 46,
+        "attackrange": 450,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Kassadin",
+      "key": "38",
+      "name": "Kassadin",
+      "title": "the Void Walker",
+      "tags": [
+        "Assassin",
+        "Mage"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 5,
+        "magic": 8,
+        "difficulty": 8
+      },
+      "image": "Kassadin.png",
+      "stats": {
+        "hp": 646,
+        "armor": 21,
+        "spellblock": 30,
+        "attackdamage": 59,
+        "attackrange": 150,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Katarina",
+      "key": "55",
+      "name": "Katarina",
+      "title": "the Sinister Blade",
+      "tags": [
+        "Assassin",
+        "Mage"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 3,
+        "magic": 9,
+        "difficulty": 8
+      },
+      "image": "Katarina.png",
+      "stats": {
+        "hp": 672,
+        "armor": 32,
+        "spellblock": 32,
+        "attackdamage": 58,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Kayle",
+      "key": "10",
+      "name": "Kayle",
+      "title": "the Righteous",
+      "tags": [
+        "Mage",
+        "Marksman"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 6,
+        "magic": 7,
+        "difficulty": 7
+      },
+      "image": "Kayle.png",
+      "stats": {
+        "hp": 670,
+        "armor": 26,
+        "spellblock": 22,
+        "attackdamage": 50,
+        "attackrange": 175,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Kayn",
+      "key": "141",
+      "name": "Kayn",
+      "title": "the Shadow Reaper",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 10,
+        "defense": 6,
+        "magic": 1,
+        "difficulty": 8
+      },
+      "image": "Kayn.png",
+      "stats": {
+        "hp": 655,
+        "armor": 38,
+        "spellblock": 32,
+        "attackdamage": 68,
+        "attackrange": 175,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Kennen",
+      "key": "85",
+      "name": "Kennen",
+      "title": "the Heart of the Tempest",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 4,
+        "magic": 7,
+        "difficulty": 4
+      },
+      "image": "Kennen.png",
+      "stats": {
+        "hp": 580,
+        "armor": 29,
+        "spellblock": 30,
+        "attackdamage": 48,
+        "attackrange": 550,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Khazix",
+      "key": "121",
+      "name": "Kha'Zix",
+      "title": "the Voidreaver",
+      "tags": [
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 4,
+        "magic": 3,
+        "difficulty": 6
+      },
+      "image": "Khazix.png",
+      "stats": {
+        "hp": 643,
+        "armor": 32,
+        "spellblock": 32,
+        "attackdamage": 60,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Kindred",
+      "key": "203",
+      "name": "Kindred",
+      "title": "The Eternal Hunters",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 2,
+        "magic": 2,
+        "difficulty": 4
+      },
+      "image": "Kindred.png",
+      "stats": {
+        "hp": 595,
+        "armor": 29,
+        "spellblock": 30,
+        "attackdamage": 65,
+        "attackrange": 500,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Kled",
+      "key": "240",
+      "name": "Kled",
+      "title": "the Cantankerous Cavalier",
+      "tags": [
+        "Fighter"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 2,
+        "magic": 2,
+        "difficulty": 7
+      },
+      "image": "Kled.png",
+      "stats": {
+        "hp": 410,
+        "armor": 35,
+        "spellblock": 28,
+        "attackdamage": 65,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "KogMaw",
+      "key": "96",
+      "name": "Kog'Maw",
+      "title": "the Mouth of the Abyss",
+      "tags": [
+        "Marksman",
+        "Mage"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 2,
+        "magic": 5,
+        "difficulty": 6
+      },
+      "image": "KogMaw.png",
+      "stats": {
+        "hp": 635,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 61,
+        "attackrange": 500,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Leblanc",
+      "key": "7",
+      "name": "LeBlanc",
+      "title": "the Deceiver",
+      "tags": [
+        "Assassin",
+        "Mage"
+      ],
+      "info": {
+        "attack": 1,
+        "defense": 4,
+        "magic": 10,
+        "difficulty": 9
+      },
+      "image": "Leblanc.png",
+      "stats": {
+        "hp": 598,
+        "armor": 22,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 525,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "LeeSin",
+      "key": "64",
+      "name": "Lee Sin",
+      "title": "the Blind Monk",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 6
+      },
+      "image": "LeeSin.png",
+      "stats": {
+        "hp": 645,
+        "armor": 36,
+        "spellblock": 32,
+        "attackdamage": 66,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Leona",
+      "key": "89",
+      "name": "Leona",
+      "title": "the Radiant Dawn",
+      "tags": [
+        "Tank",
+        "Support"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 8,
+        "magic": 3,
+        "difficulty": 4
+      },
+      "image": "Leona.png",
+      "stats": {
+        "hp": 646,
+        "armor": 43,
+        "spellblock": 32,
+        "attackdamage": 60,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Lillia",
+      "key": "876",
+      "name": "Lillia",
+      "title": "the Bashful Bloom",
+      "tags": [
+        "Fighter",
+        "Mage"
+      ],
+      "info": {
+        "attack": 0,
+        "defense": 2,
+        "magic": 10,
+        "difficulty": 8
+      },
+      "image": "Lillia.png",
+      "stats": {
+        "hp": 605,
+        "armor": 22,
+        "spellblock": 32,
+        "attackdamage": 61,
+        "attackrange": 325,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Lissandra",
+      "key": "127",
+      "name": "Lissandra",
+      "title": "the Ice Witch",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 5,
+        "magic": 8,
+        "difficulty": 6
+      },
+      "image": "Lissandra.png",
+      "stats": {
+        "hp": 620,
+        "armor": 22,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 550,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Lucian",
+      "key": "236",
+      "name": "Lucian",
+      "title": "the Purifier",
+      "tags": [
+        "Marksman",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 6
+      },
+      "image": "Lucian.png",
+      "stats": {
+        "hp": 641,
+        "armor": 28,
+        "spellblock": 30,
+        "attackdamage": 60,
+        "attackrange": 500,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Lulu",
+      "key": "117",
+      "name": "Lulu",
+      "title": "the Fae Sorceress",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 5,
+        "magic": 7,
+        "difficulty": 5
+      },
+      "image": "Lulu.png",
+      "stats": {
+        "hp": 565,
+        "armor": 26,
+        "spellblock": 30,
+        "attackdamage": 47,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Lux",
+      "key": "99",
+      "name": "Lux",
+      "title": "the Lady of Luminosity",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 4,
+        "magic": 9,
+        "difficulty": 5
+      },
+      "image": "Lux.png",
+      "stats": {
+        "hp": 580,
+        "armor": 21,
+        "spellblock": 30,
+        "attackdamage": 54,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Malphite",
+      "key": "54",
+      "name": "Malphite",
+      "title": "Shard of the Monolith",
+      "tags": [
+        "Tank",
+        "Mage"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 9,
+        "magic": 7,
+        "difficulty": 2
+      },
+      "image": "Malphite.png",
+      "stats": {
+        "hp": 665,
+        "armor": 40,
+        "spellblock": 28,
+        "attackdamage": 62,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Malzahar",
+      "key": "90",
+      "name": "Malzahar",
+      "title": "the Prophet of the Void",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 2,
+        "magic": 9,
+        "difficulty": 6
+      },
+      "image": "Malzahar.png",
+      "stats": {
+        "hp": 580,
+        "armor": 18,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 500,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Maokai",
+      "key": "57",
+      "name": "Maokai",
+      "title": "the Twisted Treant",
+      "tags": [
+        "Tank",
+        "Support"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 8,
+        "magic": 6,
+        "difficulty": 3
+      },
+      "image": "Maokai.png",
+      "stats": {
+        "hp": 665,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 64,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "MasterYi",
+      "key": "11",
+      "name": "Master Yi",
+      "title": "the Wuju Bladesman",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 10,
+        "defense": 4,
+        "magic": 2,
+        "difficulty": 4
+      },
+      "image": "MasterYi.png",
+      "stats": {
+        "hp": 640,
+        "armor": 33,
+        "spellblock": 32,
+        "attackdamage": 65,
+        "attackrange": 175,
+        "movespeed": 355
+      }
+    },
+    {
+      "id": "Mel",
+      "key": "800",
+      "name": "Mel",
+      "title": "the Soul's Reflection",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 4,
+        "magic": 9,
+        "difficulty": 5
+      },
+      "image": "Mel.png",
+      "stats": {
+        "hp": 630,
+        "armor": 21,
+        "spellblock": 30,
+        "attackdamage": 54,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Milio",
+      "key": "902",
+      "name": "Milio",
+      "title": "The Gentle Flame",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 4,
+        "magic": 8,
+        "difficulty": 5
+      },
+      "image": "Milio.png",
+      "stats": {
+        "hp": 560,
+        "armor": 26,
+        "spellblock": 30,
+        "attackdamage": 48,
+        "attackrange": 525,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "MissFortune",
+      "key": "21",
+      "name": "Miss Fortune",
+      "title": "the Bounty Hunter",
+      "tags": [
+        "Marksman",
+        "Mage"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 2,
+        "magic": 5,
+        "difficulty": 1
+      },
+      "image": "MissFortune.png",
+      "stats": {
+        "hp": 625,
+        "armor": 25,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 550,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Mordekaiser",
+      "key": "82",
+      "name": "Mordekaiser",
+      "title": "the Iron Revenant",
+      "tags": [
+        "Fighter",
+        "Mage"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 6,
+        "magic": 7,
+        "difficulty": 4
+      },
+      "image": "Mordekaiser.png",
+      "stats": {
+        "hp": 645,
+        "armor": 37,
+        "spellblock": 32,
+        "attackdamage": 61,
+        "attackrange": 175,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Morgana",
+      "key": "25",
+      "name": "Morgana",
+      "title": "the Fallen",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 1,
+        "defense": 6,
+        "magic": 8,
+        "difficulty": 1
+      },
+      "image": "Morgana.png",
+      "stats": {
+        "hp": 630,
+        "armor": 25,
+        "spellblock": 30,
+        "attackdamage": 56,
+        "attackrange": 450,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Naafiri",
+      "key": "950",
+      "name": "Naafiri",
+      "title": "the Hound of a Hundred Bites",
+      "tags": [
+        "Assassin",
+        "Fighter"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 5,
+        "magic": 0,
+        "difficulty": 2
+      },
+      "image": "Naafiri.png",
+      "stats": {
+        "hp": 610,
+        "armor": 28,
+        "spellblock": 32,
+        "attackdamage": 55,
+        "attackrange": 125,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Nami",
+      "key": "267",
+      "name": "Nami",
+      "title": "the Tidecaller",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 3,
+        "magic": 7,
+        "difficulty": 5
+      },
+      "image": "Nami.png",
+      "stats": {
+        "hp": 560,
+        "armor": 29,
+        "spellblock": 30,
+        "attackdamage": 54,
+        "attackrange": 550,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Nasus",
+      "key": "75",
+      "name": "Nasus",
+      "title": "the Curator of the Sands",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 5,
+        "magic": 6,
+        "difficulty": 6
+      },
+      "image": "Nasus.png",
+      "stats": {
+        "hp": 650,
+        "armor": 34,
+        "spellblock": 32,
+        "attackdamage": 67,
+        "attackrange": 125,
+        "movespeed": 350
+      }
+    },
+    {
+      "id": "Nautilus",
+      "key": "111",
+      "name": "Nautilus",
+      "title": "the Titan of the Depths",
+      "tags": [
+        "Tank",
+        "Support"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 6,
+        "magic": 6,
+        "difficulty": 6
+      },
+      "image": "Nautilus.png",
+      "stats": {
+        "hp": 646,
+        "armor": 39,
+        "spellblock": 32,
+        "attackdamage": 61,
+        "attackrange": 175,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Neeko",
+      "key": "518",
+      "name": "Neeko",
+      "title": "the Curious Chameleon",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 1,
+        "defense": 1,
+        "magic": 9,
+        "difficulty": 5
+      },
+      "image": "Neeko.png",
+      "stats": {
+        "hp": 610,
+        "armor": 21,
+        "spellblock": 30,
+        "attackdamage": 48,
+        "attackrange": 550,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Nidalee",
+      "key": "76",
+      "name": "Nidalee",
+      "title": "the Bestial Huntress",
+      "tags": [
+        "Assassin",
+        "Mage"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 4,
+        "magic": 7,
+        "difficulty": 8
+      },
+      "image": "Nidalee.png",
+      "stats": {
+        "hp": 610,
+        "armor": 32,
+        "spellblock": 30,
+        "attackdamage": 58,
+        "attackrange": 525,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Nilah",
+      "key": "895",
+      "name": "Nilah",
+      "title": "the Joy Unbound",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 4,
+        "magic": 4,
+        "difficulty": 10
+      },
+      "image": "Nilah.png",
+      "stats": {
+        "hp": 570,
+        "armor": 27,
+        "spellblock": 32,
+        "attackdamage": 58,
+        "attackrange": 225,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Nocturne",
+      "key": "56",
+      "name": "Nocturne",
+      "title": "the Eternal Nightmare",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 5,
+        "magic": 2,
+        "difficulty": 4
+      },
+      "image": "Nocturne.png",
+      "stats": {
+        "hp": 655,
+        "armor": 38,
+        "spellblock": 32,
+        "attackdamage": 62,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Nunu",
+      "key": "20",
+      "name": "Nunu & Willump",
+      "title": "the Boy and His Yeti",
+      "tags": [
+        "Tank",
+        "Mage"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 6,
+        "magic": 7,
+        "difficulty": 4
+      },
+      "image": "Nunu.png",
+      "stats": {
+        "hp": 610,
+        "armor": 29,
+        "spellblock": 32,
+        "attackdamage": 61,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Olaf",
+      "key": "2",
+      "name": "Olaf",
+      "title": "the Berserker",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 3
+      },
+      "image": "Olaf.png",
+      "stats": {
+        "hp": 645,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 68,
+        "attackrange": 125,
+        "movespeed": 350
+      }
+    },
+    {
+      "id": "Orianna",
+      "key": "61",
+      "name": "Orianna",
+      "title": "the Lady of Clockwork",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 3,
+        "magic": 9,
+        "difficulty": 7
+      },
+      "image": "Orianna.png",
+      "stats": {
+        "hp": 585,
+        "armor": 20,
+        "spellblock": 26,
+        "attackdamage": 44,
+        "attackrange": 525,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Ornn",
+      "key": "516",
+      "name": "Ornn",
+      "title": "The Fire below the Mountain",
+      "tags": [
+        "Tank"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 9,
+        "magic": 3,
+        "difficulty": 5
+      },
+      "image": "Ornn.png",
+      "stats": {
+        "hp": 660,
+        "armor": 33,
+        "spellblock": 32,
+        "attackdamage": 69,
+        "attackrange": 175,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Pantheon",
+      "key": "80",
+      "name": "Pantheon",
+      "title": "the Unbreakable Spear",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 4,
+        "magic": 3,
+        "difficulty": 4
+      },
+      "image": "Pantheon.png",
+      "stats": {
+        "hp": 650,
+        "armor": 40,
+        "spellblock": 28,
+        "attackdamage": 64,
+        "attackrange": 175,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Poppy",
+      "key": "78",
+      "name": "Poppy",
+      "title": "Keeper of the Hammer",
+      "tags": [
+        "Tank",
+        "Fighter"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 7,
+        "magic": 2,
+        "difficulty": 6
+      },
+      "image": "Poppy.png",
+      "stats": {
+        "hp": 610,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 60,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Pyke",
+      "key": "555",
+      "name": "Pyke",
+      "title": "the Bloodharbor Ripper",
+      "tags": [
+        "Support",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 3,
+        "magic": 1,
+        "difficulty": 7
+      },
+      "image": "Pyke.png",
+      "stats": {
+        "hp": 670,
+        "armor": 37,
+        "spellblock": 32,
+        "attackdamage": 62,
+        "attackrange": 150,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Qiyana",
+      "key": "246",
+      "name": "Qiyana",
+      "title": "Empress of the Elements",
+      "tags": [
+        "Assassin"
+      ],
+      "info": {
+        "attack": 0,
+        "defense": 2,
+        "magic": 4,
+        "difficulty": 8
+      },
+      "image": "Qiyana.png",
+      "stats": {
+        "hp": 590,
+        "armor": 31,
+        "spellblock": 32,
+        "attackdamage": 64,
+        "attackrange": 150,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Quinn",
+      "key": "133",
+      "name": "Quinn",
+      "title": "Demacia's Wings",
+      "tags": [
+        "Marksman",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 4,
+        "magic": 2,
+        "difficulty": 5
+      },
+      "image": "Quinn.png",
+      "stats": {
+        "hp": 565,
+        "armor": 28,
+        "spellblock": 30,
+        "attackdamage": 59,
+        "attackrange": 525,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Rakan",
+      "key": "497",
+      "name": "Rakan",
+      "title": "The Charmer",
+      "tags": [
+        "Support"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 4,
+        "magic": 8,
+        "difficulty": 5
+      },
+      "image": "Rakan.png",
+      "stats": {
+        "hp": 610,
+        "armor": 30,
+        "spellblock": 32,
+        "attackdamage": 62,
+        "attackrange": 300,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Rammus",
+      "key": "33",
+      "name": "Rammus",
+      "title": "the Armordillo",
+      "tags": [
+        "Tank"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 10,
+        "magic": 5,
+        "difficulty": 5
+      },
+      "image": "Rammus.png",
+      "stats": {
+        "hp": 645,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 65,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "RekSai",
+      "key": "421",
+      "name": "Rek'Sai",
+      "title": "the Void Burrower",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 2,
+        "difficulty": 3
+      },
+      "image": "RekSai.png",
+      "stats": {
+        "hp": 600,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 62,
+        "attackrange": 175,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Rell",
+      "key": "526",
+      "name": "Rell",
+      "title": "the Iron Maiden",
+      "tags": [
+        "Tank",
+        "Support"
+      ],
+      "info": {
+        "attack": 0,
+        "defense": 0,
+        "magic": 0,
+        "difficulty": 0
+      },
+      "image": "Rell.png",
+      "stats": {
+        "hp": 620,
+        "armor": 30,
+        "spellblock": 28,
+        "attackdamage": 55,
+        "attackrange": 175,
+        "movespeed": 315
+      }
+    },
+    {
+      "id": "Renata",
+      "key": "888",
+      "name": "Renata Glasc",
+      "title": "the Chem-Baroness",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 6,
+        "magic": 9,
+        "difficulty": 8
+      },
+      "image": "Renata.png",
+      "stats": {
+        "hp": 545,
+        "armor": 27,
+        "spellblock": 30,
+        "attackdamage": 49,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Renekton",
+      "key": "58",
+      "name": "Renekton",
+      "title": "the Butcher of the Sands",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 2,
+        "difficulty": 3
+      },
+      "image": "Renekton.png",
+      "stats": {
+        "hp": 660,
+        "armor": 35,
+        "spellblock": 28,
+        "attackdamage": 69,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Rengar",
+      "key": "107",
+      "name": "Rengar",
+      "title": "the Pridestalker",
+      "tags": [
+        "Assassin",
+        "Fighter"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 4,
+        "magic": 2,
+        "difficulty": 8
+      },
+      "image": "Rengar.png",
+      "stats": {
+        "hp": 590,
+        "armor": 34,
+        "spellblock": 32,
+        "attackdamage": 68,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Riven",
+      "key": "92",
+      "name": "Riven",
+      "title": "the Exile",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 1,
+        "difficulty": 8
+      },
+      "image": "Riven.png",
+      "stats": {
+        "hp": 630,
+        "armor": 33,
+        "spellblock": 32,
+        "attackdamage": 64,
+        "attackrange": 125,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Rumble",
+      "key": "68",
+      "name": "Rumble",
+      "title": "the Mechanized Menace",
+      "tags": [
+        "Fighter",
+        "Mage"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 6,
+        "magic": 8,
+        "difficulty": 10
+      },
+      "image": "Rumble.png",
+      "stats": {
+        "hp": 640,
+        "armor": 36,
+        "spellblock": 28,
+        "attackdamage": 64,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Ryze",
+      "key": "13",
+      "name": "Ryze",
+      "title": "the Rune Mage",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 2,
+        "magic": 10,
+        "difficulty": 7
+      },
+      "image": "Ryze.png",
+      "stats": {
+        "hp": 645,
+        "armor": 22,
+        "spellblock": 32,
+        "attackdamage": 58,
+        "attackrange": 550,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Samira",
+      "key": "360",
+      "name": "Samira",
+      "title": "the Desert Rose",
+      "tags": [
+        "Marksman",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 6
+      },
+      "image": "Samira.png",
+      "stats": {
+        "hp": 630,
+        "armor": 26,
+        "spellblock": 30,
+        "attackdamage": 57,
+        "attackrange": 500,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Sejuani",
+      "key": "113",
+      "name": "Sejuani",
+      "title": "Fury of the North",
+      "tags": [
+        "Tank"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 7,
+        "magic": 6,
+        "difficulty": 4
+      },
+      "image": "Sejuani.png",
+      "stats": {
+        "hp": 630,
+        "armor": 34,
+        "spellblock": 32,
+        "attackdamage": 66,
+        "attackrange": 150,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Senna",
+      "key": "235",
+      "name": "Senna",
+      "title": "the Redeemer",
+      "tags": [
+        "Support",
+        "Marksman"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 2,
+        "magic": 6,
+        "difficulty": 7
+      },
+      "image": "Senna.png",
+      "stats": {
+        "hp": 530,
+        "armor": 25,
+        "spellblock": 30,
+        "attackdamage": 50,
+        "attackrange": 600,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Seraphine",
+      "key": "147",
+      "name": "Seraphine",
+      "title": "the Starry-Eyed Songstress",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 0,
+        "defense": 0,
+        "magic": 0,
+        "difficulty": 0
+      },
+      "image": "Seraphine.png",
+      "stats": {
+        "hp": 570,
+        "armor": 26,
+        "spellblock": 30,
+        "attackdamage": 50,
+        "attackrange": 525,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Sett",
+      "key": "875",
+      "name": "Sett",
+      "title": "the Boss",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 1,
+        "difficulty": 2
+      },
+      "image": "Sett.png",
+      "stats": {
+        "hp": 670,
+        "armor": 33,
+        "spellblock": 28,
+        "attackdamage": 60,
+        "attackrange": 125,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Shaco",
+      "key": "35",
+      "name": "Shaco",
+      "title": "the Demon Jester",
+      "tags": [
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 4,
+        "magic": 6,
+        "difficulty": 9
+      },
+      "image": "Shaco.png",
+      "stats": {
+        "hp": 630,
+        "armor": 30,
+        "spellblock": 32,
+        "attackdamage": 63,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Shen",
+      "key": "98",
+      "name": "Shen",
+      "title": "the Eye of Twilight",
+      "tags": [
+        "Tank"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 9,
+        "magic": 3,
+        "difficulty": 4
+      },
+      "image": "Shen.png",
+      "stats": {
+        "hp": 610,
+        "armor": 34,
+        "spellblock": 32,
+        "attackdamage": 64,
+        "attackrange": 125,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Shyvana",
+      "key": "102",
+      "name": "Shyvana",
+      "title": "the Half-Dragon",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 6,
+        "magic": 3,
+        "difficulty": 4
+      },
+      "image": "Shyvana.png",
+      "stats": {
+        "hp": 625,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 62,
+        "attackrange": 150,
+        "movespeed": 350
+      }
+    },
+    {
+      "id": "Singed",
+      "key": "27",
+      "name": "Singed",
+      "title": "the Mad Chemist",
+      "tags": [
+        "Tank",
+        "Mage"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 8,
+        "magic": 7,
+        "difficulty": 5
+      },
+      "image": "Singed.png",
+      "stats": {
+        "hp": 650,
+        "armor": 34,
+        "spellblock": 32,
+        "attackdamage": 63,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Sion",
+      "key": "14",
+      "name": "Sion",
+      "title": "The Undead Juggernaut",
+      "tags": [
+        "Tank",
+        "Fighter"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 9,
+        "magic": 3,
+        "difficulty": 5
+      },
+      "image": "Sion.png",
+      "stats": {
+        "hp": 655,
+        "armor": 36,
+        "spellblock": 32,
+        "attackdamage": 68,
+        "attackrange": 175,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Sivir",
+      "key": "15",
+      "name": "Sivir",
+      "title": "the Battle Mistress",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 3,
+        "magic": 1,
+        "difficulty": 4
+      },
+      "image": "Sivir.png",
+      "stats": {
+        "hp": 600,
+        "armor": 30,
+        "spellblock": 30,
+        "attackdamage": 60,
+        "attackrange": 500,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Skarner",
+      "key": "72",
+      "name": "Skarner",
+      "title": "the Primordial Sovereign",
+      "tags": [
+        "Tank",
+        "Fighter"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 8,
+        "magic": 5,
+        "difficulty": 5
+      },
+      "image": "Skarner.png",
+      "stats": {
+        "hp": 630,
+        "armor": 33,
+        "spellblock": 32,
+        "attackdamage": 63,
+        "attackrange": 150,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Smolder",
+      "key": "901",
+      "name": "Smolder",
+      "title": "the Fiery Fledgling",
+      "tags": [
+        "Marksman",
+        "Mage"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 2,
+        "magic": 5,
+        "difficulty": 6
+      },
+      "image": "Smolder.png",
+      "stats": {
+        "hp": 575,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 60,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Sona",
+      "key": "37",
+      "name": "Sona",
+      "title": "Maven of the Strings",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 2,
+        "magic": 8,
+        "difficulty": 4
+      },
+      "image": "Sona.png",
+      "stats": {
+        "hp": 550,
+        "armor": 26,
+        "spellblock": 30,
+        "attackdamage": 49,
+        "attackrange": 550,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Soraka",
+      "key": "16",
+      "name": "Soraka",
+      "title": "the Starchild",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 5,
+        "magic": 7,
+        "difficulty": 3
+      },
+      "image": "Soraka.png",
+      "stats": {
+        "hp": 605,
+        "armor": 32,
+        "spellblock": 30,
+        "attackdamage": 50,
+        "attackrange": 550,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Swain",
+      "key": "50",
+      "name": "Swain",
+      "title": "the Noxian Grand General",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 6,
+        "magic": 9,
+        "difficulty": 8
+      },
+      "image": "Swain.png",
+      "stats": {
+        "hp": 595,
+        "armor": 25,
+        "spellblock": 31,
+        "attackdamage": 58,
+        "attackrange": 525,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Sylas",
+      "key": "517",
+      "name": "Sylas",
+      "title": "the Unshackled",
+      "tags": [
+        "Mage",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 4,
+        "magic": 8,
+        "difficulty": 5
+      },
+      "image": "Sylas.png",
+      "stats": {
+        "hp": 600,
+        "armor": 29,
+        "spellblock": 32,
+        "attackdamage": 61,
+        "attackrange": 175,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Syndra",
+      "key": "134",
+      "name": "Syndra",
+      "title": "the Dark Sovereign",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 3,
+        "magic": 9,
+        "difficulty": 8
+      },
+      "image": "Syndra.png",
+      "stats": {
+        "hp": 563,
+        "armor": 25,
+        "spellblock": 30,
+        "attackdamage": 54,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "TahmKench",
+      "key": "223",
+      "name": "Tahm Kench",
+      "title": "The River King",
+      "tags": [
+        "Tank",
+        "Support"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 9,
+        "magic": 6,
+        "difficulty": 5
+      },
+      "image": "TahmKench.png",
+      "stats": {
+        "hp": 640,
+        "armor": 39,
+        "spellblock": 32,
+        "attackdamage": 56,
+        "attackrange": 175,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Taliyah",
+      "key": "163",
+      "name": "Taliyah",
+      "title": "the Stoneweaver",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 1,
+        "defense": 7,
+        "magic": 8,
+        "difficulty": 5
+      },
+      "image": "Taliyah.png",
+      "stats": {
+        "hp": 550,
+        "armor": 18,
+        "spellblock": 28,
+        "attackdamage": 58,
+        "attackrange": 525,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Talon",
+      "key": "91",
+      "name": "Talon",
+      "title": "the Blade's Shadow",
+      "tags": [
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 3,
+        "magic": 1,
+        "difficulty": 7
+      },
+      "image": "Talon.png",
+      "stats": {
+        "hp": 658,
+        "armor": 30,
+        "spellblock": 36,
+        "attackdamage": 68,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Taric",
+      "key": "44",
+      "name": "Taric",
+      "title": "the Shield of Valoran",
+      "tags": [
+        "Support",
+        "Tank"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 8,
+        "magic": 5,
+        "difficulty": 3
+      },
+      "image": "Taric.png",
+      "stats": {
+        "hp": 645,
+        "armor": 40,
+        "spellblock": 28,
+        "attackdamage": 55,
+        "attackrange": 150,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Teemo",
+      "key": "17",
+      "name": "Teemo",
+      "title": "the Swift Scout",
+      "tags": [
+        "Marksman",
+        "Mage"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 3,
+        "magic": 7,
+        "difficulty": 6
+      },
+      "image": "Teemo.png",
+      "stats": {
+        "hp": 615,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 54,
+        "attackrange": 500,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Thresh",
+      "key": "412",
+      "name": "Thresh",
+      "title": "the Chain Warden",
+      "tags": [
+        "Support",
+        "Tank"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 6,
+        "magic": 6,
+        "difficulty": 7
+      },
+      "image": "Thresh.png",
+      "stats": {
+        "hp": 620,
+        "armor": 33,
+        "spellblock": 30,
+        "attackdamage": 56,
+        "attackrange": 450,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Tristana",
+      "key": "18",
+      "name": "Tristana",
+      "title": "the Yordle Gunner",
+      "tags": [
+        "Marksman",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 3,
+        "magic": 5,
+        "difficulty": 4
+      },
+      "image": "Tristana.png",
+      "stats": {
+        "hp": 640,
+        "armor": 30,
+        "spellblock": 28,
+        "attackdamage": 60,
+        "attackrange": 550,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Trundle",
+      "key": "48",
+      "name": "Trundle",
+      "title": "the Troll King",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 6,
+        "magic": 2,
+        "difficulty": 5
+      },
+      "image": "Trundle.png",
+      "stats": {
+        "hp": 650,
+        "armor": 37,
+        "spellblock": 32,
+        "attackdamage": 68,
+        "attackrange": 175,
+        "movespeed": 350
+      }
+    },
+    {
+      "id": "Tryndamere",
+      "key": "23",
+      "name": "Tryndamere",
+      "title": "the Barbarian King",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 10,
+        "defense": 5,
+        "magic": 2,
+        "difficulty": 5
+      },
+      "image": "Tryndamere.png",
+      "stats": {
+        "hp": 696,
+        "armor": 33,
+        "spellblock": 32,
+        "attackdamage": 66,
+        "attackrange": 175,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "TwistedFate",
+      "key": "4",
+      "name": "Twisted Fate",
+      "title": "the Card Master",
+      "tags": [
+        "Mage",
+        "Marksman"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 2,
+        "magic": 6,
+        "difficulty": 9
+      },
+      "image": "TwistedFate.png",
+      "stats": {
+        "hp": 604,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 52,
+        "attackrange": 525,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Twitch",
+      "key": "29",
+      "name": "Twitch",
+      "title": "the Plague Rat",
+      "tags": [
+        "Marksman",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 2,
+        "magic": 3,
+        "difficulty": 6
+      },
+      "image": "Twitch.png",
+      "stats": {
+        "hp": 630,
+        "armor": 27,
+        "spellblock": 30,
+        "attackdamage": 59,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Udyr",
+      "key": "77",
+      "name": "Udyr",
+      "title": "the Spirit Walker",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 7,
+        "magic": 4,
+        "difficulty": 7
+      },
+      "image": "Udyr.png",
+      "stats": {
+        "hp": 664,
+        "armor": 31,
+        "spellblock": 32,
+        "attackdamage": 62,
+        "attackrange": 125,
+        "movespeed": 350
+      }
+    },
+    {
+      "id": "Urgot",
+      "key": "6",
+      "name": "Urgot",
+      "title": "the Dreadnought",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 8
+      },
+      "image": "Urgot.png",
+      "stats": {
+        "hp": 655,
+        "armor": 36,
+        "spellblock": 32,
+        "attackdamage": 63,
+        "attackrange": 350,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Varus",
+      "key": "110",
+      "name": "Varus",
+      "title": "the Arrow of Retribution",
+      "tags": [
+        "Marksman",
+        "Mage"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 3,
+        "magic": 4,
+        "difficulty": 2
+      },
+      "image": "Varus.png",
+      "stats": {
+        "hp": 600,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 59,
+        "attackrange": 575,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Vayne",
+      "key": "67",
+      "name": "Vayne",
+      "title": "the Night Hunter",
+      "tags": [
+        "Marksman",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 10,
+        "defense": 1,
+        "magic": 1,
+        "difficulty": 8
+      },
+      "image": "Vayne.png",
+      "stats": {
+        "hp": 550,
+        "armor": 23,
+        "spellblock": 30,
+        "attackdamage": 60,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Veigar",
+      "key": "45",
+      "name": "Veigar",
+      "title": "the Tiny Master of Evil",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 2,
+        "magic": 10,
+        "difficulty": 7
+      },
+      "image": "Veigar.png",
+      "stats": {
+        "hp": 580,
+        "armor": 18,
+        "spellblock": 32,
+        "attackdamage": 52,
+        "attackrange": 550,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Velkoz",
+      "key": "161",
+      "name": "Vel'Koz",
+      "title": "the Eye of the Void",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 2,
+        "magic": 10,
+        "difficulty": 8
+      },
+      "image": "Velkoz.png",
+      "stats": {
+        "hp": 590,
+        "armor": 22,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 525,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Vex",
+      "key": "711",
+      "name": "Vex",
+      "title": "the Gloomist",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 0,
+        "defense": 0,
+        "magic": 0,
+        "difficulty": 0
+      },
+      "image": "Vex.png",
+      "stats": {
+        "hp": 590,
+        "armor": 23,
+        "spellblock": 28,
+        "attackdamage": 54,
+        "attackrange": 550,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Vi",
+      "key": "254",
+      "name": "Vi",
+      "title": "the Piltover Enforcer",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 4
+      },
+      "image": "Vi.png",
+      "stats": {
+        "hp": 655,
+        "armor": 30,
+        "spellblock": 32,
+        "attackdamage": 63,
+        "attackrange": 125,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Viego",
+      "key": "234",
+      "name": "Viego",
+      "title": "The Ruined King",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 4,
+        "magic": 2,
+        "difficulty": 5
+      },
+      "image": "Viego.png",
+      "stats": {
+        "hp": 630,
+        "armor": 34,
+        "spellblock": 32,
+        "attackdamage": 57,
+        "attackrange": 200,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Viktor",
+      "key": "112",
+      "name": "Viktor",
+      "title": "the Herald of the Arcane",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 4,
+        "magic": 10,
+        "difficulty": 9
+      },
+      "image": "Viktor.png",
+      "stats": {
+        "hp": 600,
+        "armor": 23,
+        "spellblock": 30,
+        "attackdamage": 53,
+        "attackrange": 525,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Vladimir",
+      "key": "8",
+      "name": "Vladimir",
+      "title": "the Crimson Reaper",
+      "tags": [
+        "Mage",
+        "Fighter"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 6,
+        "magic": 8,
+        "difficulty": 7
+      },
+      "image": "Vladimir.png",
+      "stats": {
+        "hp": 600,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 450,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Volibear",
+      "key": "106",
+      "name": "Volibear",
+      "title": "the Relentless Storm",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 7,
+        "defense": 7,
+        "magic": 4,
+        "difficulty": 3
+      },
+      "image": "Volibear.png",
+      "stats": {
+        "hp": 650,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 65,
+        "attackrange": 150,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Warwick",
+      "key": "19",
+      "name": "Warwick",
+      "title": "the Uncaged Wrath of Zaun",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 3
+      },
+      "image": "Warwick.png",
+      "stats": {
+        "hp": 620,
+        "armor": 33,
+        "spellblock": 32,
+        "attackdamage": 65,
+        "attackrange": 125,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "MonkeyKing",
+      "key": "62",
+      "name": "Wukong",
+      "title": "the Monkey King",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 2,
+        "difficulty": 3
+      },
+      "image": "MonkeyKing.png",
+      "stats": {
+        "hp": 610,
+        "armor": 31,
+        "spellblock": 28,
+        "attackdamage": 66,
+        "attackrange": 175,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Xayah",
+      "key": "498",
+      "name": "Xayah",
+      "title": "the Rebel",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 10,
+        "defense": 6,
+        "magic": 1,
+        "difficulty": 5
+      },
+      "image": "Xayah.png",
+      "stats": {
+        "hp": 630,
+        "armor": 25,
+        "spellblock": 30,
+        "attackdamage": 60,
+        "attackrange": 525,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Xerath",
+      "key": "101",
+      "name": "Xerath",
+      "title": "the Magus Ascendant",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 1,
+        "defense": 3,
+        "magic": 10,
+        "difficulty": 8
+      },
+      "image": "Xerath.png",
+      "stats": {
+        "hp": 596,
+        "armor": 22,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 525,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "XinZhao",
+      "key": "5",
+      "name": "Xin Zhao",
+      "title": "the Seneschal of Demacia",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 6,
+        "magic": 3,
+        "difficulty": 2
+      },
+      "image": "XinZhao.png",
+      "stats": {
+        "hp": 620,
+        "armor": 35,
+        "spellblock": 32,
+        "attackdamage": 63,
+        "attackrange": 175,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Yasuo",
+      "key": "157",
+      "name": "Yasuo",
+      "title": "the Unforgiven",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 4,
+        "magic": 4,
+        "difficulty": 10
+      },
+      "image": "Yasuo.png",
+      "stats": {
+        "hp": 590,
+        "armor": 32,
+        "spellblock": 32,
+        "attackdamage": 60,
+        "attackrange": 175,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Yone",
+      "key": "777",
+      "name": "Yone",
+      "title": "the Unforgotten",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 4,
+        "magic": 4,
+        "difficulty": 8
+      },
+      "image": "Yone.png",
+      "stats": {
+        "hp": 620,
+        "armor": 33,
+        "spellblock": 32,
+        "attackdamage": 62,
+        "attackrange": 175,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Yorick",
+      "key": "83",
+      "name": "Yorick",
+      "title": "Shepherd of Souls",
+      "tags": [
+        "Fighter",
+        "Tank"
+      ],
+      "info": {
+        "attack": 6,
+        "defense": 6,
+        "magic": 4,
+        "difficulty": 6
+      },
+      "image": "Yorick.png",
+      "stats": {
+        "hp": 650,
+        "armor": 36,
+        "spellblock": 32,
+        "attackdamage": 62,
+        "attackrange": 175,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Yunara",
+      "key": "804",
+      "name": "Yunara",
+      "title": "the Unbroken Faith",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 2,
+        "magic": 0,
+        "difficulty": 4
+      },
+      "image": "Yunara.png",
+      "stats": {
+        "hp": 590,
+        "armor": 25,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 575,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Yuumi",
+      "key": "350",
+      "name": "Yuumi",
+      "title": "the Magical Cat",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 5,
+        "defense": 1,
+        "magic": 8,
+        "difficulty": 2
+      },
+      "image": "Yuumi.png",
+      "stats": {
+        "hp": 500,
+        "armor": 25,
+        "spellblock": 25,
+        "attackdamage": 49,
+        "attackrange": 425,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Zaahen",
+      "key": "904",
+      "name": "Zaahen",
+      "title": "The Unsundered",
+      "tags": [
+        "Fighter",
+        "Assassin"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 6,
+        "magic": 1,
+        "difficulty": 2
+      },
+      "image": "Zaahen.png",
+      "stats": {
+        "hp": 640,
+        "armor": 36,
+        "spellblock": 32,
+        "attackdamage": 63,
+        "attackrange": 175,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Zac",
+      "key": "154",
+      "name": "Zac",
+      "title": "the Secret Weapon",
+      "tags": [
+        "Tank",
+        "Fighter"
+      ],
+      "info": {
+        "attack": 3,
+        "defense": 7,
+        "magic": 7,
+        "difficulty": 8
+      },
+      "image": "Zac.png",
+      "stats": {
+        "hp": 685,
+        "armor": 33,
+        "spellblock": 32,
+        "attackdamage": 60,
+        "attackrange": 175,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Zed",
+      "key": "238",
+      "name": "Zed",
+      "title": "the Master of Shadows",
+      "tags": [
+        "Assassin"
+      ],
+      "info": {
+        "attack": 9,
+        "defense": 2,
+        "magic": 1,
+        "difficulty": 7
+      },
+      "image": "Zed.png",
+      "stats": {
+        "hp": 654,
+        "armor": 32,
+        "spellblock": 29,
+        "attackdamage": 63,
+        "attackrange": 125,
+        "movespeed": 345
+      }
+    },
+    {
+      "id": "Zeri",
+      "key": "221",
+      "name": "Zeri",
+      "title": "The Spark of Zaun",
+      "tags": [
+        "Marksman"
+      ],
+      "info": {
+        "attack": 8,
+        "defense": 5,
+        "magic": 3,
+        "difficulty": 6
+      },
+      "image": "Zeri.png",
+      "stats": {
+        "hp": 600,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 56,
+        "attackrange": 550,
+        "movespeed": 330
+      }
+    },
+    {
+      "id": "Ziggs",
+      "key": "115",
+      "name": "Ziggs",
+      "title": "the Hexplosives Expert",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 4,
+        "magic": 9,
+        "difficulty": 4
+      },
+      "image": "Ziggs.png",
+      "stats": {
+        "hp": 606,
+        "armor": 21,
+        "spellblock": 30,
+        "attackdamage": 55,
+        "attackrange": 550,
+        "movespeed": 325
+      }
+    },
+    {
+      "id": "Zilean",
+      "key": "26",
+      "name": "Zilean",
+      "title": "the Chronokeeper",
+      "tags": [
+        "Support",
+        "Mage"
+      ],
+      "info": {
+        "attack": 2,
+        "defense": 5,
+        "magic": 8,
+        "difficulty": 6
+      },
+      "image": "Zilean.png",
+      "stats": {
+        "hp": 574,
+        "armor": 24,
+        "spellblock": 30,
+        "attackdamage": 52,
+        "attackrange": 550,
+        "movespeed": 335
+      }
+    },
+    {
+      "id": "Zoe",
+      "key": "142",
+      "name": "Zoe",
+      "title": "the Aspect of Twilight",
+      "tags": [
+        "Mage"
+      ],
+      "info": {
+        "attack": 1,
+        "defense": 7,
+        "magic": 8,
+        "difficulty": 5
+      },
+      "image": "Zoe.png",
+      "stats": {
+        "hp": 630,
+        "armor": 21,
+        "spellblock": 30,
+        "attackdamage": 58,
+        "attackrange": 550,
+        "movespeed": 340
+      }
+    },
+    {
+      "id": "Zyra",
+      "key": "143",
+      "name": "Zyra",
+      "title": "Rise of the Thorns",
+      "tags": [
+        "Mage",
+        "Support"
+      ],
+      "info": {
+        "attack": 4,
+        "defense": 3,
+        "magic": 8,
+        "difficulty": 7
+      },
+      "image": "Zyra.png",
+      "stats": {
+        "hp": 574,
+        "armor": 29,
+        "spellblock": 30,
+        "attackdamage": 53,
+        "attackrange": 575,
+        "movespeed": 340
+      }
+    }
+  ]
+}
