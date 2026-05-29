@@ -433,6 +433,19 @@ function App() {
     }),
   )
 
+  const [coachingAdvice, setCoachingAdvice] = useState<string>("")
+  const [loadingCoach, setLoadingCoach] = useState<boolean>(false)
+  const [champMetrics, setChampMetrics] = useState<{
+    winrates: Record<string, number>
+    synergies: Record<string, number>
+    globalAvgWr: number
+  } | null>(null)
+  const [shapDrivers, setShapDrivers] = useState<Array<{
+    feature: string
+    value: number
+    impact_on_win_prob: number
+  }>>([])
+
   const draftPayload = useMemo<DraftPayload>(
     () => ({
       bluePicks: blueSlots,
@@ -448,16 +461,126 @@ function App() {
   )
 
   useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const apiBase = import.meta.env.VITE_WINRATE_API_URL 
+          ? import.meta.env.VITE_WINRATE_API_URL.replace("/predict", "") 
+          : "http://localhost:8000/api/v1"
+        const response = await fetch(`${apiBase}/champions/metrics`)
+        if (response.ok) {
+          const data = await response.json()
+          setChampMetrics({
+            winrates: data.winrates,
+            synergies: data.synergies,
+            globalAvgWr: data.global_avg_wr,
+          })
+        }
+      } catch (err) {
+        console.error("Failed to fetch champion metrics from backend:", err)
+      }
+    }
+    fetchMetrics()
+  }, [])
+
+  const getRealMetrics = useMemo(() => {
+    return (champion: Champion, role: Role) => {
+      const local = championMetrics(champion, role)
+      if (!champMetrics) return local
+
+      const name = champion.name
+      const realWr = champMetrics.winrates[name] !== undefined 
+        ? champMetrics.winrates[name] * 100 
+        : champMetrics.globalAvgWr * 100
+
+      const allySlots = activeTeam === 'blue' ? blueSlots : redSlots
+      const allyNames = allySlots
+        .map(s => championById(s.championId)?.name)
+        .filter((n): n is string => !!n && n !== name)
+
+      let synergySum = 0
+      let synergyCount = 0
+      for (const allyName of allyNames) {
+        const key = [name, allyName].sort().join('_')
+        const pairWr = champMetrics.synergies[key]
+        if (pairWr !== undefined) {
+          synergySum += pairWr
+          synergyCount++
+        }
+      }
+      const synergy = synergyCount > 0 
+        ? Math.round((synergySum / synergyCount) * 100) 
+        : local.synergy
+
+      const enemySlots = activeTeam === 'blue' ? redSlots : blueSlots
+      const enemyNames = enemySlots
+        .map(s => championById(s.championId)?.name)
+        .filter((n): n is string => !!n)
+
+      let enemyWrSum = 0
+      let enemyCount = 0
+      for (const enemyName of enemyNames) {
+        const enemyWr = champMetrics.winrates[enemyName]
+        if (enemyWr !== undefined) {
+          enemyWrSum += enemyWr
+          enemyCount++
+        }
+      }
+      const counter = enemyCount > 0
+        ? Math.round(clamp(50 + (realWr / 100 - enemyWrSum / enemyCount) * 100, 30, 95))
+        : local.counter
+
+      return {
+        winRate: realWr,
+        synergy,
+        counter,
+        sampleSize: local.sampleSize
+      }
+    }
+  }, [champMetrics, activeTeam, blueSlots, redSlots])
+
+  useEffect(() => {
     let cancelled = false
 
     requestPrediction(draftPayload).then((nextPrediction) => {
       if (!cancelled) setPrediction(nextPrediction)
     })
 
+    const fetchAdvice = async () => {
+      setLoadingCoach(true)
+      try {
+        const response = await fetch(import.meta.env.VITE_COACHING_API_URL || "http://localhost:8000/api/v1/agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            draft_state: draftPayload
+          })
+        })
+
+        if (!response.ok) throw new Error("Coaching API error")
+
+        const result = await response.json()
+        if (!cancelled) {
+          setCoachingAdvice(result.response)
+          if (result.top_drivers) {
+            setShapDrivers(result.top_drivers)
+          }
+        }
+      } catch (err) {
+        console.error("Co-pilot feedback failed:", err)
+        if (!cancelled) {
+          setCoachingAdvice("Co-pilot analytical services are currently offline. Connect to backend.")
+        }
+      } finally {
+        if (!cancelled) setLoadingCoach(false)
+      }
+    }
+
+    fetchAdvice()
+
     return () => {
       cancelled = true
     }
-  }, [draftPayload])
+  }, [draftPayload, blueSlots, redSlots, blueBans, redBans])
 
   const selectedIds = useMemo(() => {
     return new Set([
@@ -483,21 +606,21 @@ function App() {
         )
       })
       .sort((a, b) => {
-        const aMetrics = championMetrics(a, focusRole)
-        const bMetrics = championMetrics(b, focusRole)
+        const aMetrics = getRealMetrics(a, focusRole)
+        const bMetrics = getRealMetrics(b, focusRole)
         if (sortKey === 'name') return a.name.localeCompare(b.name)
         if (sortKey === 'synergy') return bMetrics.synergy - aMetrics.synergy
         if (sortKey === 'counter') return bMetrics.counter - aMetrics.counter
         return bMetrics.winRate - aMetrics.winRate
       })
-  }, [focusRole, roleFilter, search, selectedIds, sortKey])
+  }, [focusRole, roleFilter, search, selectedIds, sortKey, getRealMetrics])
 
   const statRows = useMemo(() => {
     return visibleChampions.slice(0, 5).map((champion) => ({
       champion,
-      metrics: championMetrics(champion, focusRole),
+      metrics: getRealMetrics(champion, focusRole),
     }))
-  }, [focusRole, visibleChampions])
+  }, [focusRole, visibleChampions, getRealMetrics])
 
   const recommended = statRows.slice(0, 3)
 
@@ -673,7 +796,7 @@ function App() {
               <div className="champion-card placeholder">No matches</div>
             )}
             {visibleChampions.map((champion, index) => {
-              const metrics = championMetrics(champion, focusRole)
+              const metrics = getRealMetrics(champion, focusRole)
 
               return (
                 <button
@@ -746,6 +869,109 @@ function App() {
           <div className="assistant-header">
             <h2>Draft Assistant</h2>
           </div>
+
+          <div className="co-pilot-dashboard">
+            <div className="co-pilot-review">
+              <h3>Co-Pilot Tactical Review</h3>
+              {loadingCoach ? (
+                <div className="co-pilot-loading">
+                  <span className="pulse-dot"></span>
+                  <span>Calculating SHAP contributions...</span>
+                </div>
+              ) : (
+                <div className="co-pilot-content">
+                  {coachingAdvice ? (
+                    coachingAdvice.split('\n\n').map((para, i) => {
+                      const parts = para.split('**');
+                      return (
+                        <p key={i}>
+                          {parts.map((part, idx) =>
+                            idx % 2 === 1 ? <strong key={idx}>{part}</strong> : part
+                          )}
+                        </p>
+                      )
+                    })
+                  ) : (
+                    <p>Pick a champion or lock a ban to trigger tactical co-pilot advice.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="shap-drivers-panel">
+              <h3>Tactical Winrate Drivers</h3>
+              <div className="shap-drivers-list">
+                {shapDrivers.length === 0 ? (
+                  <div className="co-pilot-loading">No active drivers</div>
+                ) : (
+                  shapDrivers.map((driver) => {
+                    const isPositive = driver.impact_on_win_prob >= 0
+                    const percentVal = Math.abs(driver.impact_on_win_prob) * 100
+                    const barWidth = clamp(percentVal * 6, 5, 100) 
+                    const displayVal = `${isPositive ? '+' : '-'}${percentVal.toFixed(1)}%`
+
+                    // Driver labels map
+                    const featureLabels: Record<string, string> = {
+                      blue_synergy: 'Blue Synergy',
+                      red_synergy: 'Red Synergy',
+                      blue_team_avg_wr: 'Blue Avg WR',
+                      red_team_avg_wr: 'Red Avg WR',
+                      wr_diff: 'Winrate Diff',
+                      synergy_diff: 'Synergy Diff',
+                      blue_top_wr: 'Blue Top WR',
+                      blue_jng_wr: 'Blue Jungle WR',
+                      blue_mid_wr: 'Blue Mid WR',
+                      blue_bot_wr: 'Blue Bot WR',
+                      blue_sup_wr: 'Blue Support WR',
+                      red_top_wr: 'Red Top WR',
+                      red_jng_wr: 'Red Jungle WR',
+                      red_mid_wr: 'Red Mid WR',
+                      red_bot_wr: 'Red Bot WR',
+                      red_sup_wr: 'Red Support WR',
+                      blue_top_enc: 'Blue Top Pick',
+                      blue_jng_enc: 'Blue Jungle Pick',
+                      blue_mid_enc: 'Blue Mid Pick',
+                      blue_bot_enc: 'Blue Bot Pick',
+                      blue_sup_enc: 'Blue Support Pick',
+                      red_top_enc: 'Red Top Pick',
+                      red_jng_enc: 'Red Jungle Pick',
+                      red_mid_enc: 'Red Mid Pick',
+                      red_bot_enc: 'Red Bot Pick',
+                      red_sup_enc: 'Red Support Pick',
+                    }
+
+                    const formatFeatureName = (feat: string) => {
+                      if (featureLabels[feat]) return featureLabels[feat]
+                      return feat
+                        .replace(/_enc$/, ' Pick')
+                        .replace(/_wr$/, ' WR')
+                        .split('_')
+                        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                        .join(' ')
+                    }
+
+                    return (
+                      <div className="shap-driver-row" key={driver.feature}>
+                        <span className="shap-driver-label" title={driver.feature}>
+                          {formatFeatureName(driver.feature)}
+                        </span>
+                        <div className="driver-bar-bg">
+                          <div
+                            className={`driver-bar-fill ${isPositive ? 'positive' : 'negative'}`}
+                            style={{ width: `${barWidth}%` }}
+                          />
+                        </div>
+                        <span className={`driver-bar-value ${isPositive ? 'positive' : 'negative'}`}>
+                          {displayVal}
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="recommendation-grid">
             {recommended.map(({ champion, metrics }, index) => (
               <button

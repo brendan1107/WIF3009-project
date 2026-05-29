@@ -7,15 +7,65 @@ from app.api.routes import router as api_router
 from app.core.config import settings
 
 
+import os
+import pickle
+import polars as pl
+import shap
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Handles application startup and shutdown events.
-    Industry practice for initializing database pools, HTTP clients,
-    or loading heavy ML models into memory.
+    Pre-loads heavy serialized classifiers and parquets into memory.
     """
     # [STARTUP] Code here runs BEFORE the server starts accepting requests
     print(f"Starting up {settings.PROJECT_NAME}...")
+    
+    try:
+        # Get base directory of the backend package (parent folder of 'app')
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        # Load parquets
+        print("Loading parquets...")
+        champ_wr_path = os.path.join(BASE_DIR, "data", "Parquets", "champ_winrates.parquet")
+        champ_syn_path = os.path.join(BASE_DIR, "data", "Parquets", "champ_synergies.parquet")
+        
+        app.state.champ_wr = pl.read_parquet(champ_wr_path)
+        app.state.champ_synergies = pl.read_parquet(champ_syn_path)
+
+        # Pre-build lookup maps for optimal route performance
+        app.state.wr_map = dict(zip(app.state.champ_wr["champion"].to_list(), app.state.champ_wr["win_rate"].to_list()))
+        app.state.global_avg_wr = app.state.champ_wr["win_rate"].mean()
+
+        app.state.pair_map = {}
+        for row in app.state.champ_synergies.to_dicts():
+            key = tuple(sorted([row["champion"], row["champ2"]]))
+            app.state.pair_map[key] = row["pair_win_rate"]
+
+        # Load pickle models
+        print("Loading pickles...")
+        model_path = os.path.join(BASE_DIR, "data", "calibrated_model.pkl")
+        encoders_path = os.path.join(BASE_DIR, "data", "encoders.pkl")
+        feature_cols_path = os.path.join(BASE_DIR, "data", "feature_cols.pkl")
+        shap_output_path = os.path.join(BASE_DIR, "data", "shap_output.pkl")
+
+        with open(model_path, 'rb') as f:
+            app.state.calibrated_model = pickle.load(f)
+        with open(encoders_path, 'rb') as f:
+            app.state.encoders = pickle.load(f)
+        with open(feature_cols_path, 'rb') as f:
+            app.state.feature_cols = pickle.load(f)
+        with open(shap_output_path, 'rb') as f:
+            app.state.shap_output = pickle.load(f)
+
+        # Pre-initialize SHAP TreeExplainer once to conserve route memory
+        lgbm_model = app.state.calibrated_model.calibrated_classifiers_[0].estimator
+        app.state.shap_explainer = shap.TreeExplainer(lgbm_model)
+        
+        print("All models, encoders, and parquets successfully cached in application state.")
+    except Exception as exc:
+        print(f"CRITICAL: Failed to load serialized assets during lifespan startup: {exc}")
+        raise exc
 
     yield  # The application runs while paused here
 
