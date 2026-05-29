@@ -1,0 +1,12 @@
+POST http://127.0.0.1:8000/api/v1/agent
+Content-Type: application/json
+
+{
+  "draft_state": {
+    "blue_picks": ["Jinx", "Thresh", "Garen"],
+    "red_picks": ["Zed", "Leona", "Darius"],
+    "bans": ["Yasuo", "Yone", "Ahri", "LeBlanc"]
+  },
+  "user_question": "Blue team needs a 4th pick. Should they go Orianna, Azir, or Viktor? Who gives the best win probability?",
+  "interaction_id": null
+}

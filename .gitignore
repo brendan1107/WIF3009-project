@@ -1,0 +1,15 @@
+.vscode/
+.gemini/
+.antigravity/
+node_modules/
+
+# Local environment variables
+.env
+.env.local
+
+# Python virtual environment and compiled files
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
