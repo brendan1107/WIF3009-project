@@ -11,6 +11,9 @@ import os
 import pickle
 import polars as pl
 import shap
+import pandas as pd
+import numpy as np
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,9 +32,11 @@ async def lifespan(app: FastAPI):
         print("Loading parquets...")
         champ_wr_path = os.path.join(BASE_DIR, "data", "Parquets", "champ_winrates.parquet")
         champ_syn_path = os.path.join(BASE_DIR, "data", "Parquets", "champ_synergies.parquet")
+        champ_cnt_path = os.path.join(BASE_DIR, "data", "Parquets", "champ_counters.parquet")
         
         app.state.champ_wr = pl.read_parquet(champ_wr_path)
         app.state.champ_synergies = pl.read_parquet(champ_syn_path)
+        app.state.champ_counters = pl.read_parquet(champ_cnt_path)
 
         # Pre-build lookup maps for optimal route performance
         app.state.wr_map = dict(zip(app.state.champ_wr["champion"].to_list(), app.state.champ_wr["win_rate"].to_list()))
@@ -41,6 +46,14 @@ async def lifespan(app: FastAPI):
         for row in app.state.champ_synergies.to_dicts():
             key = tuple(sorted([row["champion"], row["champ2"]]))
             app.state.pair_map[key] = row["pair_win_rate"]
+
+        app.state.counter_map = {}
+        for row in app.state.champ_counters.to_dicts():
+            key = (row["champion"], row["enemy_champion"], row["role"])
+            app.state.counter_map[key] = {
+                "winrate": float(row["head_to_head_winrate"]),
+                "matches": int(row["matches"])
+            }
 
         # Load pickle models
         print("Loading pickles...")
@@ -61,6 +74,48 @@ async def lifespan(app: FastAPI):
         # Pre-initialize SHAP TreeExplainer once to conserve route memory
         lgbm_model = app.state.calibrated_model.calibrated_classifiers_[0].estimator
         app.state.shap_explainer = shap.TreeExplainer(lgbm_model)
+        
+        # Pre-calculate OP champions from shap_output
+        print("Pre-calculating global OP champions from SHAP values...")
+        shap_values = app.state.shap_output["values"]
+        shap_data = app.state.shap_output["data"]
+        features = app.state.shap_output["features"]
+        
+        shap_df = pd.DataFrame(shap_values, columns=features)
+        data_df = pd.DataFrame(shap_data, columns=features)
+        
+        role_cols = [
+            "blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup",
+            "red_top", "red_jng", "red_mid", "red_bot", "red_sup"
+        ]
+        
+        champ_contributions = {}
+        for i in range(len(data_df)):
+            for col in role_cols:
+                enc_col = col + "_enc"
+                le = app.state.encoders[col]
+                idx = int(data_df.loc[i, enc_col])
+                champ_name = le.classes_[idx]
+                shap_val = float(shap_df.loc[i, enc_col])
+                
+                contrib = shap_val if col.startswith("blue") else -shap_val
+                
+                if champ_name not in champ_contributions:
+                    champ_contributions[champ_name] = []
+                champ_contributions[champ_name].append(contrib)
+                
+        op_list = []
+        for name, contribs in champ_contributions.items():
+            op_list.append({
+                "champion": name,
+                "mean_contribution": float(np.mean(contribs)),
+                "mean_abs_contribution": float(np.mean(np.abs(contribs))),
+                "count": len(contribs)
+            })
+            
+        op_list = sorted(op_list, key=lambda x: x["mean_contribution"], reverse=True)
+        app.state.op_champions = op_list
+        print(f"Pre-calculated {len(op_list)} global OP champions successfully.")
         
         print("All models, encoders, and parquets successfully cached in application state.")
     except Exception as exc:
@@ -100,8 +155,12 @@ app.add_middleware(
 # ---------------------------------------------------------------------
 # ROUTER INCLUSION
 # ---------------------------------------------------------------------
+from app.api.routes import router as api_router, root_router
+
 # Mount your agent router under a versioned API prefix
 app.include_router(api_router, prefix="/api/v1", tags=["Agent Blueprint"])
+# Mount root level router for tool compatibility
+app.include_router(root_router)
 
 
 # ---------------------------------------------------------------------

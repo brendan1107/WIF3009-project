@@ -243,10 +243,18 @@ function teamScore(slots: Slot[]) {
 }
 
 function localPrediction(payload: DraftPayload): Prediction {
-  const blueScore = teamScore(payload.bluePicks)
-  const redScore = teamScore(payload.redPicks)
   const blueFilled = payload.bluePicks.filter((slot) => slot.championId).length
   const redFilled = payload.redPicks.filter((slot) => slot.championId).length
+  if (blueFilled === 0 && redFilled === 0) {
+    return {
+      blueWinRate: 50.0,
+      redWinRate: 50.0,
+      source: 'local',
+    }
+  }
+
+  const blueScore = teamScore(payload.bluePicks)
+  const redScore = teamScore(payload.redPicks)
   const blueBans = payload.blueBans.filter(Boolean).length
   const redBans = payload.redBans.filter(Boolean).length
   const banPressure = (redBans - blueBans) * 0.18
@@ -329,18 +337,14 @@ function ChampionPortrait({ id, alt }: { id?: string; alt: string }) {
 }
 
 function TeamPanel({
-  activeBanIndex,
   activeSlotIndex,
   activeTeam,
-  bans,
   feedback,
   slots,
   team,
 }: {
-  activeBanIndex?: number
   activeSlotIndex?: number
   activeTeam: Team
-  bans: string[]
   feedback: LockFeedback | null
   slots: Slot[]
   team: Team
@@ -377,30 +381,30 @@ function TeamPanel({
           )
         })}
       </div>
-      <div className="ban-strip">
-        <strong>Bans</strong>
-        <div>
-          {bans.map((banId, index) => {
-            const champion = championById(banId)
-            const isActive = team === activeTeam && index === activeBanIndex
-            const isLocked =
-              feedback?.action === 'ban' &&
-              feedback.team === team &&
-              feedback.banIndex === index
-            return (
-              <span className={`ban-chip ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`} key={`${team}-ban-${index}`}>
-                <ChampionPortrait id={banId} alt={champion?.name ?? 'Empty ban'} />
-                {banId && <i aria-hidden="true">x</i>}
-              </span>
-            )
-          })}
-        </div>
-      </div>
     </aside>
   )
 }
 
 function App() {
+  const [scale, setScale] = useState(1)
+
+  useEffect(() => {
+    const handleResize = () => {
+      const baseHeight = 1080
+      setScale(window.innerHeight / baseHeight)
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const [activeTab, setActiveTab] = useState<'stats' | 'metaProver'>('stats')
+  const [opChampions, setOpChampions] = useState<Array<{
+    champion: string
+    mean_contribution: number
+    mean_abs_contribution: number
+    count: number
+  }>>([])
   const [blueSlots, setBlueSlots] = useState(initialBlueSlots)
   const [redSlots, setRedSlots] = useState(initialRedSlots)
   const [blueBans, setBlueBans] = useState(emptyBans)
@@ -433,7 +437,9 @@ function App() {
     }),
   )
 
-  const [coachingAdvice, setCoachingAdvice] = useState<string>("")
+  const [draftWarning, setDraftWarning] = useState<string>("")
+  const [recommendations, setRecommendations] = useState<string>("")
+  const [counterAnalysis, setCounterAnalysis] = useState<string>("")
   const [loadingCoach, setLoadingCoach] = useState<boolean>(false)
   const [champMetrics, setChampMetrics] = useState<{
     winrates: Record<string, number>
@@ -447,24 +453,41 @@ function App() {
   }>>([])
 
   const draftPayload = useMemo<DraftPayload>(
-    () => ({
-      bluePicks: blueSlots,
-      redPicks: redSlots,
-      blueBans,
-      redBans,
-      activeTeam,
-      activeAction: currentStep?.action ?? 'pick',
-      activeRole,
-      stepIndex,
-    }),
-    [activeRole, activeTeam, blueBans, blueSlots, currentStep?.action, redBans, redSlots, stepIndex],
+    () => {
+      let nextBluePicks = blueSlots
+      let nextRedPicks = redSlots
+
+      if (pendingChampionId && currentStep?.action === 'pick' && activeSlotIndex !== undefined) {
+        const updateSlots = (slotsList: Slot[]) =>
+          slotsList.map((slot, index) =>
+            index === activeSlotIndex ? { ...slot, championId: pendingChampionId } : slot
+          )
+        if (activeTeam === 'blue') {
+          nextBluePicks = updateSlots(blueSlots)
+        } else {
+          nextRedPicks = updateSlots(redSlots)
+        }
+      }
+
+      return {
+        bluePicks: nextBluePicks,
+        redPicks: nextRedPicks,
+        blueBans,
+        redBans,
+        activeTeam,
+        activeAction: currentStep?.action ?? 'pick',
+        activeRole,
+        stepIndex,
+      }
+    },
+    [activeRole, activeTeam, blueBans, blueSlots, currentStep?.action, redBans, redSlots, stepIndex, pendingChampionId, activeSlotIndex],
   )
 
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const apiBase = import.meta.env.VITE_WINRATE_API_URL 
-          ? import.meta.env.VITE_WINRATE_API_URL.replace("/predict", "") 
+        const apiBase = import.meta.env.VITE_WINRATE_API_URL
+          ? import.meta.env.VITE_WINRATE_API_URL.replace("/predict", "")
           : "http://localhost:8000/api/v1"
         const response = await fetch(`${apiBase}/champions/metrics`)
         if (response.ok) {
@@ -474,6 +497,12 @@ function App() {
             synergies: data.synergies,
             globalAvgWr: data.global_avg_wr,
           })
+        }
+
+        const opResponse = await fetch(`${apiBase}/champions/op`)
+        if (opResponse.ok) {
+          const opData = await opResponse.json()
+          setOpChampions(opData.op_champions || [])
         }
       } catch (err) {
         console.error("Failed to fetch champion metrics from backend:", err)
@@ -488,8 +517,8 @@ function App() {
       if (!champMetrics) return local
 
       const name = champion.name
-      const realWr = champMetrics.winrates[name] !== undefined 
-        ? champMetrics.winrates[name] * 100 
+      const realWr = champMetrics.winrates[name] !== undefined
+        ? champMetrics.winrates[name] * 100
         : champMetrics.globalAvgWr * 100
 
       const allySlots = activeTeam === 'blue' ? blueSlots : redSlots
@@ -507,8 +536,8 @@ function App() {
           synergyCount++
         }
       }
-      const synergy = synergyCount > 0 
-        ? Math.round((synergySum / synergyCount) * 100) 
+      const synergy = synergyCount > 0
+        ? Math.round((synergySum / synergyCount) * 100)
         : local.synergy
 
       const enemySlots = activeTeam === 'blue' ? redSlots : blueSlots
@@ -541,46 +570,59 @@ function App() {
   useEffect(() => {
     let cancelled = false
 
-    requestPrediction(draftPayload).then((nextPrediction) => {
-      if (!cancelled) setPrediction(nextPrediction)
-    })
+    const isPickStep = currentStep?.action === 'pick'
+    const hasPending = !!pendingChampionId
 
-    const fetchAdvice = async () => {
-      setLoadingCoach(true)
-      try {
-        const response = await fetch(import.meta.env.VITE_COACHING_API_URL || "http://localhost:8000/api/v1/agent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            draft_state: draftPayload
-          })
-        })
-
-        if (!response.ok) throw new Error("Coaching API error")
-
-        const result = await response.json()
-        if (!cancelled) {
-          setCoachingAdvice(result.response)
-          if (result.top_drivers) {
-            setShapDrivers(result.top_drivers)
-          }
-        }
-      } catch (err) {
-        console.error("Co-pilot feedback failed:", err)
-        if (!cancelled) {
-          setCoachingAdvice("Co-pilot analytical services are currently offline. Connect to backend.")
-        }
-      } finally {
-        if (!cancelled) setLoadingCoach(false)
-      }
+    if (isPickStep || !hasPending) {
+      requestPrediction(draftPayload).then((nextPrediction) => {
+        if (!cancelled) setPrediction(nextPrediction)
+      })
     }
 
-    fetchAdvice()
+    const shouldCallAdvisor = !hasPending
+
+    if (shouldCallAdvisor) {
+      const fetchAdvice = async () => {
+        setLoadingCoach(true)
+        try {
+          const response = await fetch(import.meta.env.VITE_COACHING_API_URL || "http://localhost:8000/api/v1/agent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              draft_state: draftPayload
+            })
+          })
+
+          if (!response.ok) throw new Error("Coaching API error")
+
+          const result = await response.json()
+          if (!cancelled) {
+            setDraftWarning(result.draft_warning || "")
+            setRecommendations(result.recommendations || "")
+            setCounterAnalysis(result.counter_analysis || "")
+            if (result.top_drivers) {
+              setShapDrivers(result.top_drivers)
+            }
+          }
+        } catch (err) {
+          console.error("Co-pilot feedback failed:", err)
+          if (!cancelled) {
+            setDraftWarning("Composition threat analyzer offline.")
+            setRecommendations("Check server connections.")
+            setCounterAnalysis("Matchup counter analysis offline.")
+          }
+        } finally {
+          if (!cancelled) setLoadingCoach(false)
+        }
+      }
+
+      fetchAdvice()
+    }
 
     return () => {
       cancelled = true
     }
-  }, [draftPayload, blueSlots, redSlots, blueBans, redBans])
+  }, [draftPayload, pendingChampionId, currentStep?.action])
 
   const selectedIds = useMemo(() => {
     return new Set([
@@ -590,6 +632,19 @@ function App() {
       ...redBans,
     ].filter(Boolean))
   }, [blueBans, blueSlots, redBans, redSlots])
+
+  const recommendedChampionNames = useMemo<string[]>(() => {
+    if (!recommendations) return []
+    const names: string[] = []
+    recommendations.split(/(?=\d+\.\s+)/).forEach((item) => {
+      const trimmed = item.trim()
+      const match = trimmed.match(/^(\d+\.\s+)([^:]+):(.*)$/)
+      if (match) {
+        names.push(match[2].trim())
+      }
+    })
+    return names
+  }, [recommendations])
 
   const visibleChampions = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -606,6 +661,11 @@ function App() {
         )
       })
       .sort((a, b) => {
+        const aRec = recommendedChampionNames.includes(a.name)
+        const bRec = recommendedChampionNames.includes(b.name)
+        if (aRec && !bRec) return -1
+        if (!aRec && bRec) return 1
+
         const aMetrics = getRealMetrics(a, focusRole)
         const bMetrics = getRealMetrics(b, focusRole)
         if (sortKey === 'name') return a.name.localeCompare(b.name)
@@ -613,7 +673,7 @@ function App() {
         if (sortKey === 'counter') return bMetrics.counter - aMetrics.counter
         return bMetrics.winRate - aMetrics.winRate
       })
-  }, [focusRole, roleFilter, search, selectedIds, sortKey, getRealMetrics])
+  }, [focusRole, roleFilter, search, selectedIds, sortKey, getRealMetrics, recommendedChampionNames])
 
   const statRows = useMemo(() => {
     return visibleChampions.slice(0, 5).map((champion) => ({
@@ -621,8 +681,6 @@ function App() {
       metrics: getRealMetrics(champion, focusRole),
     }))
   }, [focusRole, visibleChampions, getRealMetrics])
-
-  const recommended = statRows.slice(0, 3)
 
   function selectChampion(championId: string) {
     if (!currentStep) return
@@ -673,197 +731,271 @@ function App() {
   }
 
   return (
-    <main className="draft-shell">
-      <header className="top-bar">
-        <div className="brand-lockup">
-          <div className="brand-crest" aria-hidden="true">R</div>
-          <strong>Rift Draft</strong>
-        </div>
-        <nav className="main-tabs" aria-label="Draft mode">
-          <button className="selected" type="button">Ranked Draft</button>
-        </nav>
-        <div className={`phase-card ${activeTeam}`}>
-          <span>{currentStep?.phase ?? 'Draft Complete'}</span>
-          <em>
-            {currentStep
-              ? `${teamName(currentStep.team)} is ${currentStep.action === 'ban' ? 'banning' : 'picking'}`
-              : 'All bans and picks are locked'}
-          </em>
-        </div>
-        <div className="header-tools" aria-label="Settings">
-          <button type="button" aria-label="Settings">&#9881;</button>
-        </div>
-      </header>
-
-      <section className="scoreboard" aria-label="Projected win chance">
-        <div className="team-score blue">
-          <TeamMark team="blue" />
-          <div>
-            <span>Blue Team</span>
-            <strong>{prediction.blueWinRate.toFixed(1)}%</strong>
-            <em>Projected Win Chance</em>
-          </div>
-        </div>
-        <div className="team-score red">
-          <TeamMark team="red" />
-          <div>
-            <span>Red Team</span>
-            <strong>{prediction.redWinRate.toFixed(1)}%</strong>
-            <em>Projected Win Chance</em>
-          </div>
-        </div>
-      </section>
-
-      <section className="draft-grid">
-        <TeamPanel
-          activeBanIndex={activeBanIndex}
-          activeSlotIndex={activeSlotIndex}
-          activeTeam={activeTeam}
-          bans={blueBans}
-          feedback={feedback}
-          slots={blueSlots}
-          team="blue"
-        />
-
-        <section className="champion-board" aria-label="Champion selection">
-          <div className="toolbar">
-            <label className="search-box">
-              <span aria-hidden="true">Search</span>
-              <input
-                aria-label="Search champions"
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search champions..."
-                type="search"
-                value={search}
-              />
-            </label>
-            <div className="role-filters" aria-label="Role filter">
-              <button className={roleFilter === 'ALL' ? 'selected' : ''} onClick={() => setRoleFilter('ALL')} type="button">
-                All
-              </button>
-              {roles.map((role) => (
-                <button
-                  className={roleFilter === role ? 'selected' : ''}
-                  key={role}
-                  onClick={() => setRoleFilter(role)}
-                  type="button"
-                >
-                  {role}
-                </button>
-              ))}
+    <div className="scaler-wrapper">
+      <main className="draft-shell" style={{ transform: `translate(-50%, -50%) scale(${scale})`, width: `calc(100vw / ${scale})` }}>
+        <div className="left-layout">
+          <header className="top-bar">
+            <div className="brand-lockup">
+              <div className="brand-crest" aria-hidden="true">R</div>
+              <strong>Rift Draft</strong>
             </div>
-            <label className="sort-control">
-              <span>Sort by:</span>
-              <select onChange={(event) => setSortKey(event.target.value as SortKey)} value={sortKey}>
-                <option value="winRate">Win Rate</option>
-                <option value="synergy">Synergy</option>
-                <option value="counter">Counter</option>
-                <option value="name">Name</option>
-              </select>
-            </label>
-          </div>
-
-          <div className={`action-banner ${activeTeam}`}>
-            <div className="action-copy">
-              <strong>{currentStep?.label ?? 'Draft complete'}</strong>
-              <span>
-                {isComplete
-                  ? 'Champion selection is locked.'
-                  : `Select a champion, then confirm the ${currentStep.action}.`}
-              </span>
+            <nav className="main-tabs" aria-label="Draft mode">
+              <button className="selected" type="button">Ranked Draft</button>
+            </nav>
+            <div className={`phase-card ${activeTeam}`}>
+              <span>{currentStep?.phase ?? 'Draft Complete'}</span>
+              <em>
+                {currentStep
+                  ? `${teamName(currentStep.team)} is ${currentStep.action === 'ban' ? 'banning' : 'picking'}`
+                  : 'All bans and picks are locked'}
+              </em>
             </div>
-            <div className="pending-selection">
-              <ChampionPortrait id={pendingChampionId} alt={pendingChampion?.name ?? 'No selected champion'} />
-              <span>
-                <strong>{pendingChampion?.name ?? 'No champion selected'}</strong>
-                <em>{currentStep ? `${teamName(currentStep.team)} ${currentStep.action}` : 'Draft complete'}</em>
-              </span>
-              <button disabled={!pendingChampionId || isComplete} onClick={confirmSelection} type="button">
-                Confirm {currentStep?.action ?? 'pick'}
-              </button>
+            <div className="header-tools" aria-label="Settings">
+              <button type="button" aria-label="Settings">&#9881;</button>
             </div>
-          </div>
+          </header>
 
-          {feedback && (
-            <div className={`lock-feedback ${feedback.team}`} key={feedback.stamp}>
-              <strong>{feedback.championName}</strong>
-              <span>{teamName(feedback.team)} {feedback.action === 'ban' ? 'ban locked' : 'pick locked'}</span>
-            </div>
-          )}
-
-          <div className="champion-grid">
-            {visibleChampions.length === 0 && (
-              <div className="champion-card placeholder">No matches</div>
-            )}
-            {visibleChampions.map((champion, index) => {
-              const metrics = getRealMetrics(champion, focusRole)
-
-              return (
-                <button
-                  className={`champion-card ${pendingChampionId === champion.id ? 'selected' : ''}`}
-                  disabled={isComplete}
-                  key={champion.id}
-                  onClick={() => selectChampion(champion.id)}
-                  type="button"
-                >
-                  {(index === 0 || index === 3 || index === 5) && <span className="favorite">*</span>}
-                  <ChampionPortrait id={champion.id} alt={champion.name} />
-                  <span className="champion-card-copy">
-                    <strong>{champion.name}</strong>
-                    <span>
-                      {metrics.winRate.toFixed(1)}% <em>{metrics.synergy}</em>
-                    </span>
-                  </span>
-                  <i aria-hidden="true">{currentStep?.action === 'ban' ? 'Ban' : 'Pick'}</i>
-                </button>
-              )
-            })}
-          </div>
-        </section>
-
-        <TeamPanel
-          activeBanIndex={activeBanIndex}
-          activeSlotIndex={activeSlotIndex}
-          activeTeam={activeTeam}
-          bans={redBans}
-          feedback={feedback}
-          slots={redSlots}
-          team="red"
-        />
-      </section>
-
-      <section className="lower-grid">
-        <section className="data-panel stats-panel">
-          <div className="panel-tabs">
-            <button className="selected" type="button">Champion Stats</button>
-            <button type="button">Matchups</button>
-            <button type="button">Synergy</button>
-            <button type="button">Counters</button>
-          </div>
-          <div className="stats-table" role="table" aria-label="Champion stats">
-            <div className="stats-row heading" role="row">
-              <span>Champion</span>
-              <span>Role</span>
-              <span>Win Rate</span>
-              <span>Synergy</span>
-              <span>Counter</span>
-              <span>Sample Size</span>
-            </div>
-            {statRows.map(({ champion, metrics }) => (
-              <div className="stats-row" key={champion.id} role="row">
-                <span className="stat-champion">
-                  <ChampionPortrait id={champion.id} alt={champion.name} />
-                  {champion.name}
-                </span>
-                <span>{focusRole.charAt(0) + focusRole.slice(1).toLowerCase()}</span>
-                <strong>{metrics.winRate.toFixed(1)}%</strong>
-                <span>{metrics.synergy}</span>
-                <span>{metrics.counter}</span>
-                <span>{metrics.sampleSize.toLocaleString()}</span>
+          <section className="scoreboard" aria-label="Projected win chance">
+            <div className="team-score blue">
+              <TeamMark team="blue" />
+              <div>
+                <span>Blue Team</span>
+                <strong>{prediction.blueWinRate.toFixed(1)}%</strong>
+                <em>Projected Win Chance</em>
               </div>
-            ))}
-          </div>
-        </section>
+              <div className="scoreboard-bans blue">
+                {blueBans.map((banId, index) => {
+                  const champion = championById(banId)
+                  const isActive = activeTeam === 'blue' && index === activeBanIndex
+                  const isLocked =
+                    feedback?.action === 'ban' &&
+                    feedback.team === 'blue' &&
+                    feedback.banIndex === index
+                  return (
+                    <span className={`ban-chip ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`} key={`blue-ban-${index}`}>
+                      <ChampionPortrait id={banId} alt={champion?.name ?? 'Empty ban'} />
+                      {banId && <i aria-hidden="true">x</i>}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="team-score red">
+              <div className="scoreboard-bans red">
+                {redBans.map((banId, index) => {
+                  const champion = championById(banId)
+                  const isActive = activeTeam === 'red' && index === activeBanIndex
+                  const isLocked =
+                    feedback?.action === 'ban' &&
+                    feedback.team === 'red' &&
+                    feedback.banIndex === index
+                  return (
+                    <span className={`ban-chip ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`} key={`red-ban-${index}`}>
+                      <ChampionPortrait id={banId} alt={champion?.name ?? 'Empty ban'} />
+                      {banId && <i aria-hidden="true">x</i>}
+                    </span>
+                  )
+                })}
+              </div>
+              <div>
+                <span>Red Team</span>
+                <strong>{prediction.redWinRate.toFixed(1)}%</strong>
+                <em>Projected Win Chance</em>
+              </div>
+              <TeamMark team="red" />
+            </div>
+          </section>
+
+          <section className="draft-grid">
+            <TeamPanel
+              activeSlotIndex={activeSlotIndex}
+              activeTeam={activeTeam}
+              feedback={feedback}
+              slots={blueSlots}
+              team="blue"
+            />
+
+            <section className="champion-board" aria-label="Champion selection">
+              <div className="toolbar">
+                <label className="search-box">
+                  <span aria-hidden="true">Search</span>
+                  <input
+                    aria-label="Search champions"
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search champions..."
+                    type="search"
+                    value={search}
+                  />
+                </label>
+                <div className="role-filters" aria-label="Role filter">
+                  <button className={roleFilter === 'ALL' ? 'selected' : ''} onClick={() => setRoleFilter('ALL')} type="button">
+                    All
+                  </button>
+                  {roles.map((role) => (
+                    <button
+                      className={roleFilter === role ? 'selected' : ''}
+                      key={role}
+                      onClick={() => setRoleFilter(role)}
+                      type="button"
+                    >
+                      {role}
+                    </button>
+                  ))}
+                </div>
+                <label className="sort-control">
+                  <span>Sort by:</span>
+                  <select onChange={(event) => setSortKey(event.target.value as SortKey)} value={sortKey}>
+                    <option value="winRate">Win Rate</option>
+                    <option value="synergy">Synergy</option>
+                    <option value="counter">Counter</option>
+                    <option value="name">Name</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className={`action-banner ${activeTeam}`}>
+                <div className="action-copy">
+                  <strong>{currentStep?.label ?? 'Draft complete'}</strong>
+                  <span>
+                    {isComplete
+                      ? 'Champion selection is locked.'
+                      : `Select a champion, then confirm the ${currentStep.action}.`}
+                  </span>
+                </div>
+                <div className="pending-selection">
+                  <ChampionPortrait id={pendingChampionId} alt={pendingChampion?.name ?? 'No selected champion'} />
+                  <span>
+                    <strong>{pendingChampion?.name ?? 'No champion selected'}</strong>
+                    <em>{currentStep ? `${teamName(currentStep.team)} ${currentStep.action}` : 'Draft complete'}</em>
+                  </span>
+                  <button disabled={!pendingChampionId || isComplete} onClick={confirmSelection} type="button">
+                    Confirm {currentStep?.action ?? 'pick'}
+                  </button>
+                </div>
+              </div>
+
+              {feedback && (
+                <div className={`lock-feedback ${feedback.team}`} key={feedback.stamp}>
+                  <strong>{feedback.championName}</strong>
+                  <span>{teamName(feedback.team)} {feedback.action === 'ban' ? 'ban locked' : 'pick locked'}</span>
+                </div>
+              )}
+
+              <div className="champion-grid">
+                {visibleChampions.length === 0 && (
+                  <div className="champion-card placeholder">No matches</div>
+                )}
+                {visibleChampions.map((champion, index) => {
+                  const metrics = getRealMetrics(champion, focusRole)
+                  const isRec = recommendedChampionNames.includes(champion.name)
+
+                  return (
+                    <button
+                      className={`champion-card ${pendingChampionId === champion.id ? 'selected' : ''} ${isRec ? 'recommended' : ''}`}
+                      disabled={isComplete}
+                      key={champion.id}
+                      onClick={() => selectChampion(champion.id)}
+                      type="button"
+                    >
+                      {isRec ? (
+                        <span className="favorite" style={{ color: '#ffd700' }}>★</span>
+                      ) : (
+                        (index === 0 || index === 3 || index === 5) && <span className="favorite">*</span>
+                      )}
+                      <ChampionPortrait id={champion.id} alt={champion.name} />
+                      <span className="champion-card-copy">
+                        <strong>{champion.name}</strong>
+                        <span>
+                          {metrics.winRate.toFixed(1)}% <em>{metrics.synergy}</em>
+                        </span>
+                      </span>
+                      <i aria-hidden="true">{currentStep?.action === 'ban' ? 'Ban' : 'Pick'}</i>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+
+            <TeamPanel
+              activeSlotIndex={activeSlotIndex}
+              activeTeam={activeTeam}
+              feedback={feedback}
+              slots={redSlots}
+              team="red"
+            />
+          </section>
+
+          <section className="data-panel stats-panel">
+            <div className="panel-tabs" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+              <button
+                className={activeTab === 'stats' ? 'selected' : ''}
+                onClick={() => setActiveTab('stats')}
+                type="button"
+              >
+                Champion Stats
+              </button>
+              <button
+                className={activeTab === 'metaProver' ? 'selected' : ''}
+                onClick={() => setActiveTab('metaProver')}
+                type="button"
+              >
+                Meta-Prover (OP)
+              </button>
+            </div>
+            {activeTab === 'stats' && (
+              <div className="stats-table" role="table" aria-label="Champion stats">
+                <div className="stats-row heading" role="row">
+                  <span>Champion</span>
+                  <span>Role</span>
+                  <span>Win Rate</span>
+                  <span>Synergy</span>
+                  <span>Counter</span>
+                  <span>Sample Size</span>
+                </div>
+                {statRows.map(({ champion, metrics }) => (
+                  <div className="stats-row" key={champion.id} role="row">
+                    <span className="stat-champion">
+                      <ChampionPortrait id={champion.id} alt={champion.name} />
+                      {champion.name}
+                    </span>
+                    <span>{focusRole.charAt(0) + focusRole.slice(1).toLowerCase()}</span>
+                    <strong>{metrics.winRate.toFixed(1)}%</strong>
+                    <span>{metrics.synergy}</span>
+                    <span>{metrics.counter}</span>
+                    <span>{metrics.sampleSize.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {activeTab === 'metaProver' && (
+              <div className="stats-table" role="table" aria-label="Meta-Prover OP champions" style={{ gridTemplateRows: "repeat(6, minmax(0, 1fr))" }}>
+                <div className="stats-row heading" role="row" style={{ gridTemplateColumns: "minmax(150px, 1.3fr) 1fr 1fr 0.9fr" }}>
+                  <span>Champion</span>
+                  <span>Mean SHAP Impact</span>
+                  <span>Mean Abs SHAP</span>
+                  <span>Games Analyzed</span>
+                </div>
+                {opChampions.slice(0, 5).map((op) => {
+                  const champObj = champions.find(c => c.name === op.champion)
+                  const isPositive = op.mean_contribution >= 0
+                  return (
+                    <div className="stats-row" key={op.champion} role="row" style={{ gridTemplateColumns: "minmax(150px, 1.3fr) 1fr 1fr 0.9fr" }}>
+                      <span className="stat-champion">
+                        <ChampionPortrait id={champObj?.id} alt={op.champion} />
+                        {op.champion}
+                      </span>
+                      <strong className={isPositive ? 'positive' : 'negative'} style={{ color: isPositive ? '#6fca68' : '#ff4c4c' }}>
+                        {isPositive ? '+' : ''}{(op.mean_contribution * 100).toFixed(2)}%
+                      </strong>
+                      <span>{(op.mean_abs_contribution * 100).toFixed(2)}%</span>
+                      <span>{op.count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        </div>
 
         <section className="data-panel recommendation-panel">
           <div className="assistant-header">
@@ -872,7 +1004,7 @@ function App() {
 
           <div className="co-pilot-dashboard">
             <div className="co-pilot-review">
-              <h3>Co-Pilot Tactical Review</h3>
+              <h3>Tactical Review</h3>
               {loadingCoach ? (
                 <div className="co-pilot-loading">
                   <span className="pulse-dot"></span>
@@ -880,17 +1012,54 @@ function App() {
                 </div>
               ) : (
                 <div className="co-pilot-content">
-                  {coachingAdvice ? (
-                    coachingAdvice.split('\n\n').map((para, i) => {
-                      const parts = para.split('**');
-                      return (
-                        <p key={i}>
-                          {parts.map((part, idx) =>
-                            idx % 2 === 1 ? <strong key={idx}>{part}</strong> : part
+                  {draftWarning || counterAnalysis || recommendations ? (
+                    <div className="co-pilot-sections">
+                      {(draftWarning || counterAnalysis) && (
+                        <div className="co-pilot-left-col">
+                          {draftWarning && (
+                            <div className="co-pilot-section warning-card">
+                              <h4>Composition Warning</h4>
+                              <p>{draftWarning}</p>
+                            </div>
                           )}
-                        </p>
-                      )
-                    })
+                          {counterAnalysis && (
+                            <div className="co-pilot-section counter-card">
+                              <h4>Tactical Counters</h4>
+                              <p>{counterAnalysis}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {recommendations && (
+                        <div className="co-pilot-section recommendations-card">
+                          <h4>Strategic Recommendations</h4>
+                          <div className="recommendations-list">
+                            {recommendations.split(/(?=\d+\.\s+)/).map((item, idx) => {
+                              const trimmed = item.trim()
+                              if (!trimmed) return null
+                              const match = trimmed.match(/^(\d+\.\s+)([^:]+):(.*)$/)
+                              if (match) {
+                                const [_, numberPrefix, champName, rest] = match
+                                return (
+                                  <div key={idx} className="recommendation-item">
+                                    <span className="recommendation-num-champ">
+                                      <strong>{numberPrefix}</strong>
+                                      <strong>{champName}</strong>:
+                                    </span>
+                                    <span>{rest}</span>
+                                  </div>
+                                )
+                              }
+                              return (
+                                <div key={idx} className="recommendation-item fallback">
+                                  {trimmed}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <p>Pick a champion or lock a ban to trigger tactical co-pilot advice.</p>
                   )}
@@ -907,7 +1076,7 @@ function App() {
                   shapDrivers.map((driver) => {
                     const isPositive = driver.impact_on_win_prob >= 0
                     const percentVal = Math.abs(driver.impact_on_win_prob) * 100
-                    const barWidth = clamp(percentVal * 6, 5, 100) 
+                    const barWidth = clamp(percentVal * 6, 5, 100)
                     const displayVal = `${isPositive ? '+' : '-'}${percentVal.toFixed(1)}%`
 
                     // Driver labels map
@@ -971,32 +1140,12 @@ function App() {
               </div>
             </div>
           </div>
-
-          <div className="recommendation-grid">
-            {recommended.map(({ champion, metrics }, index) => (
-              <button
-                className={`recommendation-card ${pendingChampionId === champion.id ? 'selected' : ''}`}
-                disabled={isComplete}
-                key={champion.id}
-                onClick={() => selectChampion(champion.id)}
-                type="button"
-              >
-                <span className="rank">{index + 1}</span>
-                <ChampionPortrait id={champion.id} alt={champion.name} />
-                <div>
-                  <strong>{champion.name}</strong>
-                  <em>{metrics.winRate.toFixed(1)}% winrate</em>
-                </div>
-              </button>
-            ))}
-          </div>
         </section>
-      </section>
-
-      <div className="backend-entry" aria-live="polite">
-        Model source: {prediction.source === 'backend' ? 'Backend API' : 'Local fallback'}
-      </div>
-    </main>
+        <div className="backend-entry" aria-live="polite">
+          Model source: {prediction.source === 'backend' ? 'Backend API' : 'Local fallback'}
+        </div>
+      </main>
+    </div>
   )
 }
 
