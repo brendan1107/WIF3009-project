@@ -3,7 +3,7 @@ import pandas as pd
 import shap
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from itertools import combinations
 from app.agents import agent_app
 
@@ -258,6 +258,90 @@ class DraftPayload(BaseModel):
     activeAction: str
     activeRole: Optional[str] = None
     stepIndex: int
+
+
+class CandidateOptionPayload(BaseModel):
+    entityId: str
+    championId: Optional[str] = None
+    championName: str
+    role: str
+
+
+class PredictOptionsPayload(BaseModel):
+    draftState: DraftPayload
+    options: List[CandidateOptionPayload]
+
+
+ROLE_COLS = [
+    "blue_top",
+    "blue_jng",
+    "blue_mid",
+    "blue_bot",
+    "blue_sup",
+    "red_top",
+    "red_jng",
+    "red_mid",
+    "red_bot",
+    "red_sup",
+]
+
+
+def build_model_row(blue_slots: Dict[str, str], red_slots: Dict[str, str], request: Request) -> dict:
+    wr_map = request.app.state.wr_map
+    global_avg_wr = request.app.state.global_avg_wr
+    pair_map = request.app.state.pair_map
+    encoders = request.app.state.encoders
+
+    def team_synergy_score(champs):
+        scores = []
+        valid = [c for c in champs if pd.notna(c) and c != ""]
+        for c1, c2 in combinations(valid, 2):
+            key = tuple(sorted([c1, c2]))
+            if key in pair_map:
+                scores.append(pair_map[key])
+        return np.mean(scores) if scores else 0.5
+
+    def encode_val(encoder_name, val):
+        le = encoders[encoder_name]
+        if val in le.classes_:
+            return le.transform([val])[0]
+        return le.transform([le.classes_[0]])[0]
+
+    row = {}
+    for col in ROLE_COLS:
+        role_part = col.split("_")[1]
+        if col.startswith("blue"):
+            row[col] = get_slot_champion(blue_slots, role_part) or encoders[col].classes_[0]
+        else:
+            row[col] = get_slot_champion(red_slots, role_part) or encoders[col].classes_[0]
+
+    row["patch"] = "16.1"
+    row["league"] = "LCK"
+    row["blue_team"] = encoders["blue_team"].classes_[0]
+    row["red_team"] = encoders["red_team"].classes_[0]
+
+    for col in ROLE_COLS:
+        row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
+
+    blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
+    red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
+
+    row["blue_synergy"] = team_synergy_score([row[r] for r in blue_roles])
+    row["red_synergy"] = team_synergy_score([row[r] for r in red_roles])
+    row["blue_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in blue_roles])
+    row["red_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in red_roles])
+    row["wr_diff"] = row["blue_team_avg_wr"] - row["red_team_avg_wr"]
+    row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
+
+    for col in ROLE_COLS:
+        row[f"{col}_enc"] = encode_val(col, row[col])
+
+    row["patch_enc"] = encode_val("patch", row["patch"])
+    row["league_enc"] = encode_val("league", row["league"])
+    row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
+    row["red_team_enc"] = encode_val("red_team", row["red_team"])
+
+    return row
 
 
 class TelemetryDriver(BaseModel):
@@ -657,6 +741,69 @@ def predict_endpoint(payload: DraftPayload, request: Request) -> dict:
     blue_win_rate = float(probs[0][1]) * 100
 
     return {"blueWinRate": blue_win_rate, "redWinRate": 100.0 - blue_win_rate}
+
+
+@router.post("/predict-options")
+def predict_options_endpoint(payload: PredictOptionsPayload, request: Request) -> dict:
+    """Batch score candidate champion-role options from the active team's perspective."""
+    if not payload.options:
+        return {"optionWinRates": {}}
+
+    base_blue_slots = {
+        s.role: s.championId
+        for s in payload.draftState.bluePicks
+        if s.championId
+    }
+    base_red_slots = {
+        s.role: s.championId
+        for s in payload.draftState.redPicks
+        if s.championId
+    }
+
+    rows = []
+    row_options = []
+    for option in payload.options:
+        champion_name = option.championName or option.championId
+        if not champion_name:
+            continue
+
+        blue_slots = dict(base_blue_slots)
+        red_slots = dict(base_red_slots)
+        if payload.draftState.activeTeam == "blue":
+            blue_slots[option.role] = champion_name
+        else:
+            red_slots[option.role] = champion_name
+
+        try:
+            rows.append(build_model_row(blue_slots, red_slots, request))
+            row_options.append(option)
+        except Exception as exc:
+            print(f"Failed to build option row for {option.entityId}: {exc}")
+
+    if not rows:
+        return {"optionWinRates": {}}
+
+    feature_cols = request.app.state.feature_cols
+    calibrated_model = request.app.state.calibrated_model
+    X_test = pd.DataFrame(rows)
+    X_features = X_test[feature_cols].copy()
+
+    cat_cols = [c + "_enc" for c in ROLE_COLS] + ["patch_enc", "league_enc"]
+    for c in cat_cols:
+        if c in X_features:
+            X_features[c] = X_features[c].astype("category")
+
+    probs = calibrated_model.predict_proba(X_features)
+    option_win_rates = {}
+    for option, prob in zip(row_options, probs):
+        blue_win_rate = float(prob[1]) * 100
+        option_win_rates[option.entityId] = (
+            blue_win_rate
+            if payload.draftState.activeTeam == "blue"
+            else 100.0 - blue_win_rate
+        )
+
+    return {"optionWinRates": option_win_rates}
 
 
 @router.get("/champions/metrics")

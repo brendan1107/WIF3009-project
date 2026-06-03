@@ -4,8 +4,7 @@ import './App.css'
 
 type Role = 'TOP' | 'JUNGLE' | 'MID' | 'BOTTOM' | 'SUPPORT'
 type Team = 'blue' | 'red'
-type DraftAction = 'ban' | 'pick'
-type SortKey = 'winRate' | 'name' | 'synergy' | 'counter'
+type SortKey = 'winRate' | 'name'
 
 type Champion = {
   id: string
@@ -31,27 +30,24 @@ type Champion = {
 }
 
 type Slot = {
-  role: Role
   player: string
   championId?: string
+  role?: Role
 }
 
 type DraftStep = {
-  phase: 'Ban Phase 1' | 'Pick Phase 1' | 'Ban Phase 2' | 'Pick Phase 2'
-  action: DraftAction
+  phase: 'Pick Phase 1' | 'Pick Phase 2'
+  action: 'pick'
   team: Team
   label: string
-  banIndex?: number
   slotIndex?: number
 }
 
 type DraftPayload = {
   bluePicks: Slot[]
   redPicks: Slot[]
-  blueBans: string[]
-  redBans: string[]
   activeTeam: Team
-  activeAction: DraftAction
+  activeAction: 'pick'
   activeRole?: Role
   stepIndex: number
 }
@@ -63,12 +59,51 @@ type Prediction = {
 }
 
 type LockFeedback = {
-  action: DraftAction
-  banIndex?: number
   championName: string
+  role?: Role
   slotIndex?: number
   stamp: number
   team: Team
+}
+
+type ChampionOption = {
+  champion: Champion
+  entityId: string
+  role: Role
+}
+
+type ReplacementTarget = {
+  team: Team
+  slotIndex: number
+  role: Role
+}
+
+type ApiSlot = {
+  role: Role
+  player: string
+  championId: string
+}
+
+type ApiDraftPayload = {
+  bluePicks: ApiSlot[]
+  redPicks: ApiSlot[]
+  blueBans: string[]
+  redBans: string[]
+  activeTeam: Team
+  activeAction: 'pick'
+  activeRole?: Role
+  stepIndex: number
+}
+
+type ApiCandidateOption = {
+  entityId: string
+  championId: string
+  championName: string
+  role: Role
+}
+
+type PredictOptionsResponse = {
+  optionWinRates: Record<string, number>
 }
 
 const championIcons = import.meta.glob('./assets/champion/*.png', {
@@ -80,22 +115,12 @@ const championIcons = import.meta.glob('./assets/champion/*.png', {
 const roles: Role[] = ['TOP', 'JUNGLE', 'MID', 'BOTTOM', 'SUPPORT']
 
 const draftSteps: DraftStep[] = [
-  { phase: 'Ban Phase 1', action: 'ban', team: 'blue', banIndex: 0, label: 'Blue Ban 1' },
-  { phase: 'Ban Phase 1', action: 'ban', team: 'red', banIndex: 0, label: 'Red Ban 1' },
-  { phase: 'Ban Phase 1', action: 'ban', team: 'blue', banIndex: 1, label: 'Blue Ban 2' },
-  { phase: 'Ban Phase 1', action: 'ban', team: 'red', banIndex: 1, label: 'Red Ban 2' },
-  { phase: 'Ban Phase 1', action: 'ban', team: 'blue', banIndex: 2, label: 'Blue Ban 3' },
-  { phase: 'Ban Phase 1', action: 'ban', team: 'red', banIndex: 2, label: 'Red Ban 3' },
   { phase: 'Pick Phase 1', action: 'pick', team: 'blue', slotIndex: 0, label: 'Blue Pick 1' },
   { phase: 'Pick Phase 1', action: 'pick', team: 'red', slotIndex: 0, label: 'Red Pick 1' },
   { phase: 'Pick Phase 1', action: 'pick', team: 'red', slotIndex: 1, label: 'Red Pick 2' },
   { phase: 'Pick Phase 1', action: 'pick', team: 'blue', slotIndex: 1, label: 'Blue Pick 2' },
   { phase: 'Pick Phase 1', action: 'pick', team: 'blue', slotIndex: 2, label: 'Blue Pick 3' },
   { phase: 'Pick Phase 1', action: 'pick', team: 'red', slotIndex: 2, label: 'Red Pick 3' },
-  { phase: 'Ban Phase 2', action: 'ban', team: 'red', banIndex: 3, label: 'Red Ban 4' },
-  { phase: 'Ban Phase 2', action: 'ban', team: 'blue', banIndex: 3, label: 'Blue Ban 4' },
-  { phase: 'Ban Phase 2', action: 'ban', team: 'red', banIndex: 4, label: 'Red Ban 5' },
-  { phase: 'Ban Phase 2', action: 'ban', team: 'blue', banIndex: 4, label: 'Blue Ban 5' },
   { phase: 'Pick Phase 2', action: 'pick', team: 'red', slotIndex: 3, label: 'Red Pick 4' },
   { phase: 'Pick Phase 2', action: 'pick', team: 'blue', slotIndex: 3, label: 'Blue Pick 4' },
   { phase: 'Pick Phase 2', action: 'pick', team: 'blue', slotIndex: 4, label: 'Blue Pick 5' },
@@ -114,6 +139,7 @@ const roleOverrides: Record<string, Role[]> = {
   Ahri: ['MID'],
   Akali: ['MID', 'TOP'],
   Anivia: ['MID'],
+  Ashe: ['BOTTOM', 'SUPPORT'],
   Cassiopeia: ['MID'],
   Darius: ['TOP'],
   Jhin: ['BOTTOM'],
@@ -144,22 +170,20 @@ const positionIcon: Record<Role, string> = {
 }
 
 const initialBlueSlots: Slot[] = [
-  { role: 'MID', player: 'Player 1' },
-  { role: 'JUNGLE', player: 'Player 2' },
-  { role: 'TOP', player: 'Player 3' },
-  { role: 'SUPPORT', player: 'Player 4' },
-  { role: 'BOTTOM', player: 'Player 5' },
+  { player: 'Player 1' },
+  { player: 'Player 2' },
+  { player: 'Player 3' },
+  { player: 'Player 4' },
+  { player: 'Player 5' },
 ]
 
 const initialRedSlots: Slot[] = [
-  { role: 'JUNGLE', player: 'Enemy 1' },
-  { role: 'TOP', player: 'Enemy 2' },
-  { role: 'BOTTOM', player: 'Enemy 3' },
-  { role: 'MID', player: 'Enemy 4' },
-  { role: 'SUPPORT', player: 'Enemy 5' },
+  { player: 'Enemy 1' },
+  { player: 'Enemy 2' },
+  { player: 'Enemy 3' },
+  { player: 'Enemy 4' },
+  { player: 'Enemy 5' },
 ]
-
-const emptyBans = ['', '', '', '', '']
 
 const champions = (championData.champions as Champion[]).filter(
   (champion) => championIcons[`./assets/champion/${champion.id}.png`],
@@ -222,23 +246,17 @@ function championMetrics(champion: Champion, role: Role) {
     champion.info.difficulty * 0.05
   const keyNoise = (Number(champion.key) % 17) / 10
   const winRate = clamp(base + keyNoise, 45.5, 53.4)
-  const synergy = Math.round(
-    clamp(58 + roleFit(champion, role) * 2 + champion.info.defense * 1.8, 40, 94),
-  )
-  const counter = Math.round(
-    clamp(42 + champion.info.attack * 2 + champion.info.magic * 1.3, 35, 91),
-  )
   const sampleSize = 8700 + (Number(champion.key) % 8500)
 
-  return { winRate, synergy, counter, sampleSize }
+  return { winRate, sampleSize }
 }
 
 function teamScore(slots: Slot[]) {
   return slots.reduce((score, slot) => {
     const champion = championById(slot.championId)
-    if (!champion) return score
+    if (!champion || !slot.role) return score
     const metrics = championMetrics(champion, slot.role)
-    return score + metrics.winRate + metrics.synergy * 0.08 + metrics.counter * 0.04
+    return score + metrics.winRate
   }, 0)
 }
 
@@ -255,12 +273,9 @@ function localPrediction(payload: DraftPayload): Prediction {
 
   const blueScore = teamScore(payload.bluePicks)
   const redScore = teamScore(payload.redPicks)
-  const blueBans = payload.blueBans.filter(Boolean).length
-  const redBans = payload.redBans.filter(Boolean).length
-  const banPressure = (redBans - blueBans) * 0.18
   const activeBonus = payload.activeTeam === 'blue' ? 0.35 : -0.35
   const blueWinRate = clamp(
-    50 + (blueScore - redScore) * 0.16 + (blueFilled - redFilled) * 0.72 + banPressure + activeBonus,
+    50 + (blueScore - redScore) * 0.16 + (blueFilled - redFilled) * 0.72 + activeBonus,
     38,
     62,
   )
@@ -277,10 +292,11 @@ async function requestPrediction(payload: DraftPayload): Promise<Prediction> {
   if (!endpoint) return localPrediction(payload)
 
   try {
+    const apiPayload = toApiDraftPayload(payload)
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(apiPayload),
     })
 
     if (!response.ok) {
@@ -302,14 +318,77 @@ function teamName(team: Team) {
   return team === 'blue' ? 'Blue Team' : 'Red Team'
 }
 
-function currentPickRole(step: DraftStep | undefined, blueSlots: Slot[], redSlots: Slot[]) {
-  if (!step || step.action !== 'pick' || step.slotIndex === undefined) return undefined
-  return step.team === 'blue' ? blueSlots[step.slotIndex]?.role : redSlots[step.slotIndex]?.role
+function optionId(championId: string, role: Role) {
+  return `${championId}-${role}`
 }
 
-function nextPickRole(stepIndex: number, blueSlots: Slot[], redSlots: Slot[]) {
-  const nextPick = draftSteps.slice(stepIndex).find((step) => step.action === 'pick')
-  return currentPickRole(nextPick, blueSlots, redSlots) ?? 'MID'
+function roleLabel(role?: Role) {
+  return role ? role.charAt(0) + role.slice(1).toLowerCase() : 'Role pending'
+}
+
+function apiSlots(slots: Slot[]) {
+  return slots.flatMap((slot): ApiSlot[] => {
+    const champion = championById(slot.championId)
+    if (!champion || !slot.role) return []
+    return [
+      {
+        role: slot.role,
+        player: slot.player,
+        championId: champion.name,
+      },
+    ]
+  })
+}
+
+function toApiDraftPayload(payload: DraftPayload): ApiDraftPayload {
+  return {
+    bluePicks: apiSlots(payload.bluePicks),
+    redPicks: apiSlots(payload.redPicks),
+    blueBans: [],
+    redBans: [],
+    activeTeam: payload.activeTeam,
+    activeAction: payload.activeAction,
+    activeRole: payload.activeRole,
+    stepIndex: payload.stepIndex,
+  }
+}
+
+function predictOptionsEndpoint() {
+  const endpoint = import.meta.env.VITE_WINRATE_API_URL
+  if (!endpoint) return undefined
+  const normalizedEndpoint = endpoint.replace(/\/$/, '')
+  return normalizedEndpoint.endsWith('/predict')
+    ? normalizedEndpoint.replace(/\/predict$/, '/predict-options')
+    : `${normalizedEndpoint}/predict-options`
+}
+
+function toApiCandidateOptions(options: ChampionOption[]): ApiCandidateOption[] {
+  return options.map(({ champion, entityId, role }) => ({
+    entityId,
+    championId: champion.id,
+    championName: champion.name,
+    role,
+  }))
+}
+
+async function requestOptionWinRates(draftState: DraftPayload, options: ChampionOption[]) {
+  const endpoint = predictOptionsEndpoint()
+  if (!endpoint || options.length === 0) return undefined
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      draftState: toApiDraftPayload(draftState),
+      options: toApiCandidateOptions(options),
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Predict options API returned ${response.status}`)
+  }
+
+  return (await response.json()) as PredictOptionsResponse
 }
 
 function TeamMark({ team }: { team: Team }) {
@@ -339,13 +418,17 @@ function ChampionPortrait({ id, alt }: { id?: string; alt: string }) {
 function TeamPanel({
   activeSlotIndex,
   activeTeam,
+  canReplace,
   feedback,
+  onReplaceSlot,
   slots,
   team,
 }: {
   activeSlotIndex?: number
   activeTeam: Team
+  canReplace: boolean
   feedback: LockFeedback | null
+  onReplaceSlot: (team: Team, slotIndex: number) => void
   slots: Slot[]
   team: Team
 }) {
@@ -357,25 +440,28 @@ function TeamPanel({
           const champion = championById(slot.championId)
           const isActive = team === activeTeam && index === activeSlotIndex
           const isLocked =
-            feedback?.action === 'pick' &&
-            feedback.team === team &&
+            feedback?.team === team &&
             feedback.slotIndex === index
 
           return (
             <button
               className={`draft-slot ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`}
-              key={`${slot.player}-${slot.role}`}
+              disabled={!canReplace || !slot.championId || !slot.role}
+              key={slot.player}
+              onClick={() => onReplaceSlot(team, index)}
               type="button"
             >
-              <span className="role-sigil">{positionIcon[slot.role]}</span>
+              <span className={`role-sigil ${slot.role ? '' : 'empty'}`}>
+                {slot.role ? positionIcon[slot.role] : ''}
+              </span>
               <ChampionPortrait id={slot.championId} alt={champion?.name ?? `${slot.player} open pick`} />
               <span className="slot-copy">
                 <strong>{slot.player}</strong>
-                <span>{champion?.name ?? slot.role}</span>
-                {isActive && <em>Picking...</em>}
+                <span>{champion?.name ?? 'Open pick'}</span>
+                {(slot.role || isActive) && <em>{slot.role ? roleLabel(slot.role) : 'Picking...'}</em>}
               </span>
               <span className="swap-icon" aria-hidden="true">
-                Role
+                {canReplace ? 'Edit' : 'Role'}
               </span>
             </button>
           )
@@ -409,32 +495,32 @@ function App() {
   }>>([])
   const [blueSlots, setBlueSlots] = useState(initialBlueSlots)
   const [redSlots, setRedSlots] = useState(initialRedSlots)
-  const [blueBans, setBlueBans] = useState(emptyBans)
-  const [redBans, setRedBans] = useState(emptyBans)
   const [stepIndex, setStepIndex] = useState(0)
   const [pendingChampionId, setPendingChampionId] = useState<string>()
+  const [pendingRole, setPendingRole] = useState<Role>()
+  const [replacementTarget, setReplacementTarget] = useState<ReplacementTarget>()
   const [feedback, setFeedback] = useState<LockFeedback | null>(null)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<Role | 'ALL'>('ALL')
   const [sortKey, setSortKey] = useState<SortKey>('winRate')
+  const [modelOptionWinRates, setModelOptionWinRates] = useState<Record<string, number>>({})
+  const [optionWinRatesLoading, setOptionWinRatesLoading] = useState(false)
 
   const currentStep = draftSteps[stepIndex]
   const isComplete = !currentStep
-  const activeTeam = currentStep?.team ?? 'blue'
-  const activeRole = currentPickRole(currentStep, blueSlots, redSlots)
-  const focusRole = activeRole ?? nextPickRole(stepIndex, blueSlots, redSlots)
-  const activeBanIndex = currentStep?.action === 'ban' ? currentStep.banIndex : undefined
-  const activeSlotIndex = currentStep?.action === 'pick' ? currentStep.slotIndex : undefined
+  const activeTeam = replacementTarget?.team ?? currentStep?.team ?? 'blue'
+  const activeRole = replacementTarget?.role ?? pendingRole
+  const activeSlotIndex = replacementTarget?.slotIndex ?? currentStep?.slotIndex
+  const isReplacingPick = isComplete && !!replacementTarget
+  const canSelectChampion = !isComplete || isReplacingPick
   const pendingChampion = championById(pendingChampionId)
 
   const [prediction, setPrediction] = useState<Prediction>(() =>
     localPrediction({
       bluePicks: initialBlueSlots,
       redPicks: initialRedSlots,
-      blueBans: emptyBans,
-      redBans: emptyBans,
       activeTeam: 'blue',
-      activeAction: 'ban',
+      activeAction: 'pick',
       stepIndex: 0,
     }),
   )
@@ -459,10 +545,10 @@ function App() {
       let nextBluePicks = blueSlots
       let nextRedPicks = redSlots
 
-      if (pendingChampionId && currentStep?.action === 'pick' && activeSlotIndex !== undefined) {
+      if (pendingChampionId && pendingRole && activeSlotIndex !== undefined && canSelectChampion) {
         const updateSlots = (slotsList: Slot[]) =>
           slotsList.map((slot, index) =>
-            index === activeSlotIndex ? { ...slot, championId: pendingChampionId } : slot
+            index === activeSlotIndex ? { ...slot, championId: pendingChampionId, role: pendingRole } : slot
           )
         if (activeTeam === 'blue') {
           nextBluePicks = updateSlots(blueSlots)
@@ -474,15 +560,13 @@ function App() {
       return {
         bluePicks: nextBluePicks,
         redPicks: nextRedPicks,
-        blueBans,
-        redBans,
         activeTeam,
-        activeAction: currentStep?.action ?? 'pick',
+        activeAction: 'pick',
         activeRole,
         stepIndex,
       }
     },
-    [activeRole, activeTeam, blueBans, blueSlots, currentStep?.action, redBans, redSlots, stepIndex, pendingChampionId, activeSlotIndex],
+    [activeRole, activeTeam, blueSlots, canSelectChampion, redSlots, stepIndex, pendingChampionId, pendingRole, activeSlotIndex],
   )
 
   useEffect(() => {
@@ -516,6 +600,13 @@ function App() {
   const getRealMetrics = useMemo(() => {
     return (champion: Champion, role: Role) => {
       const local = championMetrics(champion, role)
+      const modelWinRate = modelOptionWinRates[optionId(champion.id, role)]
+      if (modelWinRate !== undefined) {
+        return {
+          winRate: modelWinRate,
+          sampleSize: local.sampleSize
+        }
+      }
       if (!champMetrics) return local
 
       const name = champion.name
@@ -523,51 +614,12 @@ function App() {
         ? champMetrics.winrates[name] * 100
         : champMetrics.globalAvgWr * 100
 
-      const allySlots = activeTeam === 'blue' ? blueSlots : redSlots
-      const allyNames = allySlots
-        .map(s => championById(s.championId)?.name)
-        .filter((n): n is string => !!n && n !== name)
-
-      let synergySum = 0
-      let synergyCount = 0
-      for (const allyName of allyNames) {
-        const key = [name, allyName].sort().join('_')
-        const pairWr = champMetrics.synergies[key]
-        if (pairWr !== undefined) {
-          synergySum += pairWr
-          synergyCount++
-        }
-      }
-      const synergy = synergyCount > 0
-        ? Math.round((synergySum / synergyCount) * 100)
-        : local.synergy
-
-      const enemySlots = activeTeam === 'blue' ? redSlots : blueSlots
-      const enemyNames = enemySlots
-        .map(s => championById(s.championId)?.name)
-        .filter((n): n is string => !!n)
-
-      let enemyWrSum = 0
-      let enemyCount = 0
-      for (const enemyName of enemyNames) {
-        const enemyWr = champMetrics.winrates[enemyName]
-        if (enemyWr !== undefined) {
-          enemyWrSum += enemyWr
-          enemyCount++
-        }
-      }
-      const counter = enemyCount > 0
-        ? Math.round(clamp(50 + (realWr / 100 - enemyWrSum / enemyCount) * 100, 30, 95))
-        : local.counter
-
       return {
         winRate: realWr,
-        synergy,
-        counter,
         sampleSize: local.sampleSize
       }
     }
-  }, [champMetrics, activeTeam, blueSlots, redSlots])
+  }, [champMetrics, modelOptionWinRates])
 
   useEffect(() => {
     let cancelled = false
@@ -591,7 +643,7 @@ function App() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              draft_state: draftPayload
+              draft_state: toApiDraftPayload(draftPayload)
             })
           })
 
@@ -626,87 +678,169 @@ function App() {
     }
   }, [draftPayload, pendingChampionId, currentStep?.action])
 
-  const selectedIds = useMemo(() => {
+  const selectedChampionIds = useMemo(() => {
+    const replacedChampionId = replacementTarget
+      ? (replacementTarget.team === 'blue' ? blueSlots : redSlots)[replacementTarget.slotIndex]?.championId
+      : undefined
     return new Set([
       ...blueSlots.map((slot) => slot.championId),
       ...redSlots.map((slot) => slot.championId),
-      ...blueBans,
-      ...redBans,
-    ].filter(Boolean))
-  }, [blueBans, blueSlots, redBans, redSlots])
+    ].filter((championId): championId is string => !!championId && championId !== replacedChampionId))
+  }, [blueSlots, redSlots, replacementTarget])
 
-  const recommendedChampionNames = useMemo<string[]>(() => {
-    if (!recommendations) return []
-    const names: string[] = []
-    recommendations.split(/(?=\d+\.\s+)/).forEach((item) => {
-      const trimmed = item.trim()
-      const match = trimmed.match(/^(\d+\.\s+)([^:]+):(.*)$/)
-      if (match) {
-        names.push(match[2].trim())
-      }
-    })
-    return names
-  }, [recommendations])
+  const allowedOptionRoles = useMemo(() => {
+    if (replacementTarget) return new Set<Role>([replacementTarget.role])
+    const teamSlots = activeTeam === 'blue' ? blueSlots : redSlots
+    const filledRoles = new Set(teamSlots.map((slot) => slot.role).filter((role): role is Role => !!role))
+    return new Set(roles.filter((role) => !filledRoles.has(role)))
+  }, [activeTeam, blueSlots, redSlots, replacementTarget])
 
-  const visibleChampions = useMemo(() => {
+  const filteredChampionOptions = useMemo<ChampionOption[]>(() => {
     const query = search.trim().toLowerCase()
 
     return champions
-      .filter((champion) => !selectedIds.has(champion.id))
-      .filter((champion) => roleFilter === 'ALL' || rolesForChampion(champion).includes(roleFilter))
-      .filter((champion) => {
+      .flatMap((champion) =>
+        rolesForChampion(champion).map((role) => ({
+          champion,
+          entityId: optionId(champion.id, role),
+          role,
+        })),
+      )
+      .filter((option) => !selectedChampionIds.has(option.champion.id))
+      .filter((option) => allowedOptionRoles.has(option.role))
+      .filter((option) => roleFilter === 'ALL' || option.role === roleFilter)
+      .filter((option) => {
         if (!query) return true
         return (
-          champion.name.toLowerCase().includes(query) ||
-          champion.title.toLowerCase().includes(query) ||
-          champion.tags.join(' ').toLowerCase().includes(query)
+          option.champion.name.toLowerCase().includes(query) ||
+          option.champion.title.toLowerCase().includes(query) ||
+          option.champion.tags.join(' ').toLowerCase().includes(query) ||
+          roleLabel(option.role).toLowerCase().includes(query)
         )
       })
-      .sort((a, b) => {
-        const aRec = recommendedChampionNames.includes(a.name)
-        const bRec = recommendedChampionNames.includes(b.name)
-        if (aRec && !bRec) return -1
-        if (!aRec && bRec) return 1
+  }, [allowedOptionRoles, roleFilter, search, selectedChampionIds])
 
-        const aMetrics = getRealMetrics(a, focusRole)
-        const bMetrics = getRealMetrics(b, focusRole)
-        if (sortKey === 'name') return a.name.localeCompare(b.name)
-        if (sortKey === 'synergy') return bMetrics.synergy - aMetrics.synergy
-        if (sortKey === 'counter') return bMetrics.counter - aMetrics.counter
-        return bMetrics.winRate - aMetrics.winRate
-      })
-  }, [focusRole, roleFilter, search, selectedIds, sortKey, getRealMetrics, recommendedChampionNames])
+  const visibleChampionOptions = useMemo<ChampionOption[]>(() => {
+    return [...filteredChampionOptions].sort((a, b) => {
+      const aMetrics = getRealMetrics(a.champion, a.role)
+      const bMetrics = getRealMetrics(b.champion, b.role)
+      if (sortKey === 'name') return a.champion.name.localeCompare(b.champion.name) || a.role.localeCompare(b.role)
+      return bMetrics.winRate - aMetrics.winRate
+    })
+  }, [filteredChampionOptions, sortKey, getRealMetrics])
 
-  const statRows = useMemo(() => {
-    return visibleChampions.slice(0, 5).map((champion) => ({
-      champion,
-      metrics: getRealMetrics(champion, focusRole),
-    }))
-  }, [focusRole, visibleChampions, getRealMetrics])
+  const highlightedOptionIds = useMemo(() => {
+    const bestByRole = new Map<Role, { entityId: string; winRate: number }>()
 
-  function selectChampion(championId: string) {
-    if (!currentStep) return
-    setPendingChampionId(championId)
-  }
+    for (const option of visibleChampionOptions) {
+      if (!allowedOptionRoles.has(option.role)) continue
 
-  function confirmSelection() {
-    if (!currentStep || !pendingChampionId || !pendingChampion) return
-
-    if (currentStep.action === 'ban' && currentStep.banIndex !== undefined) {
-      const updateBans = (current: string[]) =>
-        current.map((banId, index) => (index === currentStep.banIndex ? pendingChampionId : banId))
-
-      if (currentStep.team === 'blue') {
-        setBlueBans(updateBans)
-      } else {
-        setRedBans(updateBans)
+      const winRate = getRealMetrics(option.champion, option.role).winRate
+      const currentBest = bestByRole.get(option.role)
+      if (!currentBest || winRate > currentBest.winRate) {
+        bestByRole.set(option.role, { entityId: option.entityId, winRate })
       }
     }
 
-    if (currentStep.action === 'pick' && currentStep.slotIndex !== undefined) {
+    return new Set([...bestByRole.values()].map((option) => option.entityId))
+  }, [allowedOptionRoles, getRealMetrics, visibleChampionOptions])
+
+  useEffect(() => {
+    if (!canSelectChampion || activeSlotIndex === undefined) {
+      setOptionWinRatesLoading(false)
+      return
+    }
+
+    let cancelled = false
+
+    if (filteredChampionOptions.length === 0) {
+      setModelOptionWinRates({})
+      setOptionWinRatesLoading(false)
+      return
+    }
+
+    const draftState: DraftPayload = {
+      bluePicks: blueSlots,
+      redPicks: redSlots,
+      activeTeam,
+      activeAction: 'pick',
+      stepIndex,
+    }
+
+    setOptionWinRatesLoading(true)
+    requestOptionWinRates(draftState, filteredChampionOptions)
+      .then((result) => {
+        if (!cancelled && result) {
+          setModelOptionWinRates(result.optionWinRates)
+        }
+      })
+      .catch((error) => {
+        console.error('Batch option winrates failed:', error)
+      })
+      .finally(() => {
+        if (!cancelled) setOptionWinRatesLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeSlotIndex, activeTeam, blueSlots, canSelectChampion, filteredChampionOptions, redSlots, stepIndex])
+
+  const statRows = useMemo(() => {
+    return visibleChampionOptions.slice(0, 5).map((option) => ({
+      champion: option.champion,
+      metrics: getRealMetrics(option.champion, option.role),
+      role: option.role,
+    }))
+  }, [visibleChampionOptions, getRealMetrics])
+
+  function selectChampion(championId: string, role: Role) {
+    if (!canSelectChampion) return
+    setPendingChampionId(championId)
+    setPendingRole(role)
+  }
+
+  function confirmSelection() {
+    if (!pendingChampionId || !pendingChampion || !pendingRole) return
+
+    if (replacementTarget) {
       const updateSlots = (current: Slot[]) =>
         current.map((slot, index) =>
-          index === currentStep.slotIndex ? { ...slot, championId: pendingChampionId } : slot,
+          index === replacementTarget.slotIndex
+            ? { ...slot, championId: pendingChampionId, role: replacementTarget.role }
+            : slot,
+        )
+
+      if (replacementTarget.team === 'blue') {
+        setBlueSlots(updateSlots)
+      } else {
+        setRedSlots(updateSlots)
+      }
+
+      const stamp = window.Date.now()
+      setFeedback({
+        championName: pendingChampion.name,
+        role: replacementTarget.role,
+        slotIndex: replacementTarget.slotIndex,
+        stamp,
+        team: replacementTarget.team,
+      })
+      window.setTimeout(() => {
+        setFeedback((current) => (current?.stamp === stamp ? null : current))
+      }, 1100)
+      setPendingChampionId(undefined)
+      setPendingRole(undefined)
+      setReplacementTarget(undefined)
+      setRoleFilter('ALL')
+      return
+    }
+
+    if (!currentStep) return
+
+    if (currentStep.slotIndex !== undefined) {
+      const updateSlots = (current: Slot[]) =>
+        current.map((slot, index) =>
+          index === currentStep.slotIndex ? { ...slot, championId: pendingChampionId, role: pendingRole } : slot,
         )
 
       if (currentStep.team === 'blue') {
@@ -718,9 +852,8 @@ function App() {
 
     const stamp = window.Date.now()
     setFeedback({
-      action: currentStep.action,
-      banIndex: currentStep.banIndex,
       championName: pendingChampion.name,
+      role: pendingRole,
       slotIndex: currentStep.slotIndex,
       stamp,
       team: currentStep.team,
@@ -729,7 +862,45 @@ function App() {
       setFeedback((current) => (current?.stamp === stamp ? null : current))
     }, 1100)
     setPendingChampionId(undefined)
+    setPendingRole(undefined)
     setStepIndex((current) => Math.min(current + 1, draftSteps.length))
+  }
+
+  function startReplacement(team: Team, slotIndex: number) {
+    if (!isComplete) return
+    const slot = (team === 'blue' ? blueSlots : redSlots)[slotIndex]
+    if (!slot?.championId || !slot.role) return
+    setReplacementTarget({ team, slotIndex, role: slot.role })
+    setPendingChampionId(undefined)
+    setPendingRole(slot.role)
+    setSearch('')
+    setRoleFilter(slot.role)
+  }
+
+  function cancelReplacement() {
+    setReplacementTarget(undefined)
+    setPendingChampionId(undefined)
+    setPendingRole(undefined)
+    setRoleFilter('ALL')
+  }
+
+  function resetDraft() {
+    setBlueSlots(initialBlueSlots)
+    setRedSlots(initialRedSlots)
+    setStepIndex(0)
+    setPendingChampionId(undefined)
+    setPendingRole(undefined)
+    setReplacementTarget(undefined)
+    setFeedback(null)
+    setModelOptionWinRates({})
+    setOptionWinRatesLoading(false)
+    setPrediction(localPrediction({
+      bluePicks: initialBlueSlots,
+      redPicks: initialRedSlots,
+      activeTeam: 'blue',
+      activeAction: 'pick',
+      stepIndex: 0,
+    }))
   }
 
   return (
@@ -748,12 +919,12 @@ function App() {
               <span>{currentStep?.phase ?? 'Draft Complete'}</span>
               <em>
                 {currentStep
-                  ? `${teamName(currentStep.team)} is ${currentStep.action === 'ban' ? 'banning' : 'picking'}`
-                  : 'All bans and picks are locked'}
+                  ? `${teamName(currentStep.team)} is picking`
+                  : 'All picks are locked'}
               </em>
             </div>
             <div className="header-tools" aria-label="Settings">
-              <button type="button" aria-label="Settings">&#9881;</button>
+              <button type="button" onClick={resetDraft} aria-label="Reset draft">Reset</button>
             </div>
           </header>
 
@@ -765,40 +936,8 @@ function App() {
                 <strong>{prediction.blueWinRate.toFixed(1)}%</strong>
                 <em>Projected Win Chance</em>
               </div>
-              <div className="scoreboard-bans blue">
-                {blueBans.map((banId, index) => {
-                  const champion = championById(banId)
-                  const isActive = activeTeam === 'blue' && index === activeBanIndex
-                  const isLocked =
-                    feedback?.action === 'ban' &&
-                    feedback.team === 'blue' &&
-                    feedback.banIndex === index
-                  return (
-                    <span className={`ban-chip ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`} key={`blue-ban-${index}`}>
-                      <ChampionPortrait id={banId} alt={champion?.name ?? 'Empty ban'} />
-                      {banId && <i aria-hidden="true">x</i>}
-                    </span>
-                  )
-                })}
-              </div>
             </div>
             <div className="team-score red">
-              <div className="scoreboard-bans red">
-                {redBans.map((banId, index) => {
-                  const champion = championById(banId)
-                  const isActive = activeTeam === 'red' && index === activeBanIndex
-                  const isLocked =
-                    feedback?.action === 'ban' &&
-                    feedback.team === 'red' &&
-                    feedback.banIndex === index
-                  return (
-                    <span className={`ban-chip ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`} key={`red-ban-${index}`}>
-                      <ChampionPortrait id={banId} alt={champion?.name ?? 'Empty ban'} />
-                      {banId && <i aria-hidden="true">x</i>}
-                    </span>
-                  )
-                })}
-              </div>
               <div>
                 <span>Red Team</span>
                 <strong>{prediction.redWinRate.toFixed(1)}%</strong>
@@ -812,7 +951,9 @@ function App() {
             <TeamPanel
               activeSlotIndex={activeSlotIndex}
               activeTeam={activeTeam}
+              canReplace={isComplete}
               feedback={feedback}
+              onReplaceSlot={startReplacement}
               slots={blueSlots}
               team="blue"
             />
@@ -848,70 +989,97 @@ function App() {
                   <span>Sort by:</span>
                   <select onChange={(event) => setSortKey(event.target.value as SortKey)} value={sortKey}>
                     <option value="winRate">Win Rate</option>
-                    <option value="synergy">Synergy</option>
-                    <option value="counter">Counter</option>
                     <option value="name">Name</option>
                   </select>
+                  {optionWinRatesLoading && <em>Updating</em>}
                 </label>
               </div>
 
               <div className={`action-banner ${activeTeam}`}>
                 <div className="action-copy">
-                  <strong>{currentStep?.label ?? 'Draft complete'}</strong>
+                  <strong>
+                    {replacementTarget
+                      ? `${teamName(replacementTarget.team)} ${roleLabel(replacementTarget.role)} replacement`
+                      : currentStep?.label ?? 'Draft complete'}
+                  </strong>
                   <span>
-                    {isComplete
-                      ? 'Champion selection is locked.'
-                      : `Select a champion, then confirm the ${currentStep.action}.`}
+                    {replacementTarget
+                      ? `Choose a new ${roleLabel(replacementTarget.role)} champion for this player.`
+                      : isComplete
+                        ? 'Click a player box to replace that champion.'
+                        : 'Select a champion, then confirm the pick.'}
                   </span>
                 </div>
                 <div className="pending-selection">
                   <ChampionPortrait id={pendingChampionId} alt={pendingChampion?.name ?? 'No selected champion'} />
                   <span>
                     <strong>{pendingChampion?.name ?? 'No champion selected'}</strong>
-                    <em>{currentStep ? `${teamName(currentStep.team)} ${currentStep.action}` : 'Draft complete'}</em>
+                    <em>
+                      {replacementTarget
+                        ? `${teamName(replacementTarget.team)} ${roleLabel(replacementTarget.role)}`
+                        : currentStep
+                          ? `${teamName(currentStep.team)} ${pendingRole ? roleLabel(pendingRole) : 'pick'}`
+                          : 'Draft complete'}
+                    </em>
                   </span>
-                  <button disabled={!pendingChampionId || isComplete} onClick={confirmSelection} type="button">
-                    Confirm {currentStep?.action ?? 'pick'}
-                  </button>
+                  {replacementTarget ? (
+                    <div className="pending-buttons">
+                      <button disabled={!pendingChampionId} onClick={confirmSelection} type="button">Replace</button>
+                      <button className="secondary" onClick={cancelReplacement} type="button">Cancel</button>
+                    </div>
+                  ) : isComplete ? (
+                    <button onClick={resetDraft} type="button">Reset draft</button>
+                  ) : (
+                    <button disabled={!pendingChampionId || !pendingRole} onClick={confirmSelection} type="button">
+                      Confirm pick
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {isComplete && !replacementTarget && (
+                <div className="final-actions" aria-label="Finished draft actions">
+                  <div>
+                    <strong>Final draft ready</strong>
+                    <span>Click any filled player box to choose another champion for that same role.</span>
+                  </div>
+                </div>
+              )}
 
               {feedback && (
                 <div className={`lock-feedback ${feedback.team}`} key={feedback.stamp}>
                   <strong>{feedback.championName}</strong>
-                  <span>{teamName(feedback.team)} {feedback.action === 'ban' ? 'ban locked' : 'pick locked'}</span>
+                  <span>{teamName(feedback.team)} {roleLabel(feedback.role)} locked</span>
                 </div>
               )}
 
               <div className="champion-grid">
-                {visibleChampions.length === 0 && (
+                {visibleChampionOptions.length === 0 && (
                   <div className="champion-card placeholder">No matches</div>
                 )}
-                {visibleChampions.map((champion, index) => {
-                  const metrics = getRealMetrics(champion, focusRole)
-                  const isRec = recommendedChampionNames.includes(champion.name)
+                {visibleChampionOptions.map(({ champion, entityId, role }) => {
+                  const metrics = getRealMetrics(champion, role)
+                  const isHighlighted = highlightedOptionIds.has(entityId)
+                  const isSelected = pendingChampionId === champion.id && pendingRole === role
 
                   return (
                     <button
-                      className={`champion-card ${pendingChampionId === champion.id ? 'selected' : ''} ${isRec ? 'recommended' : ''}`}
-                      disabled={isComplete}
-                      key={champion.id}
-                      onClick={() => selectChampion(champion.id)}
+                      className={`champion-card ${isSelected ? 'selected' : ''} ${isHighlighted ? 'recommended' : ''}`}
+                      disabled={!canSelectChampion}
+                      key={entityId}
+                      onClick={() => selectChampion(champion.id, role)}
                       type="button"
                     >
-                      {isRec ? (
-                        <span className="favorite" style={{ color: '#ffd700' }}>★</span>
-                      ) : (
-                        (index === 0 || index === 3 || index === 5) && <span className="favorite">*</span>
-                      )}
+                      {isHighlighted && <span className="favorite">*</span>}
                       <ChampionPortrait id={champion.id} alt={champion.name} />
                       <span className="champion-card-copy">
-                        <strong>{champion.name}</strong>
-                        <span>
-                          {metrics.winRate.toFixed(1)}% <em>{metrics.synergy}</em>
-                        </span>
+                        <strong>
+                          {champion.name}
+                          <em className="card-role-tag">{roleLabel(role)}</em>
+                        </strong>
+                        <span>{metrics.winRate.toFixed(1)}%</span>
                       </span>
-                      <i aria-hidden="true">{currentStep?.action === 'ban' ? 'Ban' : 'Pick'}</i>
+                      <i aria-hidden="true">Pick</i>
                     </button>
                   )
                 })}
@@ -921,7 +1089,9 @@ function App() {
             <TeamPanel
               activeSlotIndex={activeSlotIndex}
               activeTeam={activeTeam}
+              canReplace={isComplete}
               feedback={feedback}
+              onReplaceSlot={startReplacement}
               slots={redSlots}
               team="red"
             />
@@ -950,20 +1120,16 @@ function App() {
                   <span>Champion</span>
                   <span>Role</span>
                   <span>Win Rate</span>
-                  <span>Synergy</span>
-                  <span>Counter</span>
                   <span>Sample Size</span>
                 </div>
-                {statRows.map(({ champion, metrics }) => (
-                  <div className="stats-row" key={champion.id} role="row">
+                {statRows.map(({ champion, metrics, role }) => (
+                  <div className="stats-row" key={optionId(champion.id, role)} role="row">
                     <span className="stat-champion">
                       <ChampionPortrait id={champion.id} alt={champion.name} />
                       {champion.name}
                     </span>
-                    <span>{focusRole.charAt(0) + focusRole.slice(1).toLowerCase()}</span>
+                    <span>{roleLabel(role)}</span>
                     <strong>{metrics.winRate.toFixed(1)}%</strong>
-                    <span>{metrics.synergy}</span>
-                    <span>{metrics.counter}</span>
                     <span>{metrics.sampleSize.toLocaleString()}</span>
                   </div>
                 ))}
@@ -1084,7 +1250,7 @@ function App() {
                         )}
                       </div>
                     ) : (
-                      <p>Pick a champion or lock a ban to trigger tactical co-pilot advice.</p>
+                      <p>Pick a champion to trigger tactical co-pilot advice.</p>
                     )}
                   </div>
                 )}
