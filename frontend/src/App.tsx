@@ -387,11 +387,13 @@ function TeamPanel({
 
 function App() {
   const [scale, setScale] = useState(1)
+  const [assistantOpen, setAssistantOpen] = useState(false)
 
   useEffect(() => {
     const handleResize = () => {
+      const baseWidth = 1920
       const baseHeight = 1080
-      setScale(window.innerHeight / baseHeight)
+      setScale(Math.min(window.innerWidth / baseWidth, window.innerHeight / baseHeight))
     }
     handleResize()
     window.addEventListener('resize', handleResize)
@@ -732,7 +734,7 @@ function App() {
 
   return (
     <div className="scaler-wrapper">
-      <main className="draft-shell" style={{ transform: `translate(-50%, -50%) scale(${scale})`, width: `calc(100vw / ${scale})` }}>
+      <main className="draft-shell" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
         <div className="left-layout">
           <header className="top-bar">
             <div className="brand-lockup">
@@ -997,150 +999,172 @@ function App() {
           </section>
         </div>
 
-        <section className="data-panel recommendation-panel">
-          <div className="assistant-header">
-            <h2>Draft Assistant</h2>
-          </div>
+        <aside className={`data-panel recommendation-panel ${assistantOpen ? 'expanded' : ''}`}>
+          <button
+            aria-expanded={assistantOpen}
+            aria-label={`${assistantOpen ? 'Collapse' : 'Expand'} draft assistant`}
+            className="assistant-rail"
+            onClick={() => setAssistantOpen((isOpen) => !isOpen)}
+            type="button"
+          >
+            <span className="assistant-rail-mark">AI</span>
+            <span className="assistant-rail-label">Coach</span>
+            <span className={`assistant-rail-dot ${loadingCoach ? 'loading' : ''}`} />
+          </button>
 
-          <div className="co-pilot-dashboard">
-            <div className="co-pilot-review">
-              <h3>Tactical Review</h3>
-              {loadingCoach ? (
-                <div className="co-pilot-loading">
-                  <span className="pulse-dot"></span>
-                  <span>Calculating SHAP contributions...</span>
-                </div>
-              ) : (
-                <div className="co-pilot-content">
-                  {draftWarning || counterAnalysis || recommendations ? (
-                    <div className="co-pilot-sections">
-                      {(draftWarning || counterAnalysis) && (
-                        <div className="co-pilot-left-col">
-                          {draftWarning && (
-                            <div className="co-pilot-section warning-card">
-                              <h4>Composition Warning</h4>
-                              <p>{draftWarning}</p>
-                            </div>
-                          )}
-                          {counterAnalysis && (
-                            <div className="co-pilot-section counter-card">
-                              <h4>Tactical Counters</h4>
-                              <p>{counterAnalysis}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {recommendations && (
-                        <div className="co-pilot-section recommendations-card">
-                          <h4>Strategic Recommendations</h4>
-                          <div className="recommendations-list">
-                            {recommendations.split(/(?=\d+\.\s+)/).map((item, idx) => {
-                              const trimmed = item.trim()
-                              if (!trimmed) return null
-                              const match = trimmed.match(/^(\d+\.\s+)([^:]+):(.*)$/)
-                              if (match) {
-                                const [_, numberPrefix, champName, rest] = match
-                                return (
-                                  <div key={idx} className="recommendation-item">
-                                    <span className="recommendation-num-champ">
-                                      <strong>{numberPrefix}</strong>
-                                      <strong>{champName}</strong>:
-                                    </span>
-                                    <span>{rest}</span>
-                                  </div>
-                                )
-                              }
-                              return (
-                                <div key={idx} className="recommendation-item fallback">
-                                  {trimmed}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p>Pick a champion or lock a ban to trigger tactical co-pilot advice.</p>
-                  )}
-                </div>
-              )}
+          <div className="assistant-drawer-content">
+            <div className="assistant-header">
+              <h2>Draft Assistant</h2>
+              <button
+                aria-label="Collapse draft assistant"
+                className="assistant-close"
+                onClick={() => setAssistantOpen(false)}
+                type="button"
+              >
+                x
+              </button>
             </div>
 
-            <div className="shap-drivers-panel">
-              <h3>Tactical Winrate Drivers</h3>
-              <div className="shap-drivers-list">
-                {shapDrivers.length === 0 ? (
-                  <div className="co-pilot-loading">No active drivers</div>
+            <div className="co-pilot-dashboard">
+              <div className="co-pilot-review">
+                <h3>Tactical Review</h3>
+                {loadingCoach ? (
+                  <div className="co-pilot-loading">
+                    <span className="pulse-dot"></span>
+                    <span>Calculating SHAP contributions...</span>
+                  </div>
                 ) : (
-                  shapDrivers.map((driver) => {
-                    const isPositive = driver.impact_on_win_prob >= 0
-                    const percentVal = Math.abs(driver.impact_on_win_prob) * 100
-                    const barWidth = clamp(percentVal * 6, 5, 100)
-                    const displayVal = `${isPositive ? '+' : '-'}${percentVal.toFixed(1)}%`
-
-                    // Driver labels map
-                    const featureLabels: Record<string, string> = {
-                      blue_synergy: 'Blue Synergy',
-                      red_synergy: 'Red Synergy',
-                      blue_team_avg_wr: 'Blue Avg WR',
-                      red_team_avg_wr: 'Red Avg WR',
-                      wr_diff: 'Winrate Diff',
-                      synergy_diff: 'Synergy Diff',
-                      blue_top_wr: 'Blue Top WR',
-                      blue_jng_wr: 'Blue Jungle WR',
-                      blue_mid_wr: 'Blue Mid WR',
-                      blue_bot_wr: 'Blue Bot WR',
-                      blue_sup_wr: 'Blue Support WR',
-                      red_top_wr: 'Red Top WR',
-                      red_jng_wr: 'Red Jungle WR',
-                      red_mid_wr: 'Red Mid WR',
-                      red_bot_wr: 'Red Bot WR',
-                      red_sup_wr: 'Red Support WR',
-                      blue_top_enc: 'Blue Top Pick',
-                      blue_jng_enc: 'Blue Jungle Pick',
-                      blue_mid_enc: 'Blue Mid Pick',
-                      blue_bot_enc: 'Blue Bot Pick',
-                      blue_sup_enc: 'Blue Support Pick',
-                      red_top_enc: 'Red Top Pick',
-                      red_jng_enc: 'Red Jungle Pick',
-                      red_mid_enc: 'Red Mid Pick',
-                      red_bot_enc: 'Red Bot Pick',
-                      red_sup_enc: 'Red Support Pick',
-                    }
-
-                    const formatFeatureName = (feat: string) => {
-                      if (featureLabels[feat]) return featureLabels[feat]
-                      return feat
-                        .replace(/_enc$/, ' Pick')
-                        .replace(/_wr$/, ' WR')
-                        .split('_')
-                        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-                        .join(' ')
-                    }
-
-                    return (
-                      <div className="shap-driver-row" key={driver.feature}>
-                        <span className="shap-driver-label" title={driver.feature}>
-                          {formatFeatureName(driver.feature)}
-                        </span>
-                        <div className="driver-bar-bg">
-                          <div
-                            className={`driver-bar-fill ${isPositive ? 'positive' : 'negative'}`}
-                            style={{ width: `${barWidth}%` }}
-                          />
-                        </div>
-                        <span className={`driver-bar-value ${isPositive ? 'positive' : 'negative'}`}>
-                          {displayVal}
-                        </span>
+                  <div className="co-pilot-content">
+                    {draftWarning || counterAnalysis || recommendations ? (
+                      <div className="co-pilot-sections">
+                        {(draftWarning || counterAnalysis) && (
+                          <div className="co-pilot-left-col">
+                            {draftWarning && (
+                              <div className="co-pilot-section warning-card">
+                                <h4>Composition Warning</h4>
+                                <p>{draftWarning}</p>
+                              </div>
+                            )}
+                            {counterAnalysis && (
+                              <div className="co-pilot-section counter-card">
+                                <h4>Tactical Counters</h4>
+                                <p>{counterAnalysis}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {recommendations && (
+                          <div className="co-pilot-section recommendations-card">
+                            <h4>Strategic Recommendations</h4>
+                            <div className="recommendations-list">
+                              {recommendations.split(/(?=\d+\.\s+)/).map((item, idx) => {
+                                const trimmed = item.trim()
+                                if (!trimmed) return null
+                                const match = trimmed.match(/^(\d+\.\s+)([^:]+):(.*)$/)
+                                if (match) {
+                                  const [, numberPrefix, champName, rest] = match
+                                  return (
+                                    <div key={idx} className="recommendation-item">
+                                      <span className="recommendation-num-champ">
+                                        <strong>{numberPrefix}</strong>
+                                        <strong>{champName}</strong>:
+                                      </span>
+                                      <span>{rest}</span>
+                                    </div>
+                                  )
+                                }
+                                return (
+                                  <div key={idx} className="recommendation-item fallback">
+                                    {trimmed}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )
-                  })
+                    ) : (
+                      <p>Pick a champion or lock a ban to trigger tactical co-pilot advice.</p>
+                    )}
+                  </div>
                 )}
+              </div>
+
+              <div className="shap-drivers-panel">
+                <h3>Tactical Winrate Drivers</h3>
+                <div className="shap-drivers-list">
+                  {shapDrivers.length === 0 ? (
+                    <div className="co-pilot-loading">No active drivers</div>
+                  ) : (
+                    shapDrivers.map((driver) => {
+                      const isPositive = driver.impact_on_win_prob >= 0
+                      const percentVal = Math.abs(driver.impact_on_win_prob) * 100
+                      const barWidth = clamp(percentVal * 6, 5, 100)
+                      const displayVal = `${isPositive ? '+' : '-'}${percentVal.toFixed(1)}%`
+
+                      // Driver labels map
+                      const featureLabels: Record<string, string> = {
+                        blue_synergy: 'Blue Synergy',
+                        red_synergy: 'Red Synergy',
+                        blue_team_avg_wr: 'Blue Avg WR',
+                        red_team_avg_wr: 'Red Avg WR',
+                        wr_diff: 'Winrate Diff',
+                        synergy_diff: 'Synergy Diff',
+                        blue_top_wr: 'Blue Top WR',
+                        blue_jng_wr: 'Blue Jungle WR',
+                        blue_mid_wr: 'Blue Mid WR',
+                        blue_bot_wr: 'Blue Bot WR',
+                        blue_sup_wr: 'Blue Support WR',
+                        red_top_wr: 'Red Top WR',
+                        red_jng_wr: 'Red Jungle WR',
+                        red_mid_wr: 'Red Mid WR',
+                        red_bot_wr: 'Red Bot WR',
+                        red_sup_wr: 'Red Support WR',
+                        blue_top_enc: 'Blue Top Pick',
+                        blue_jng_enc: 'Blue Jungle Pick',
+                        blue_mid_enc: 'Blue Mid Pick',
+                        blue_bot_enc: 'Blue Bot Pick',
+                        blue_sup_enc: 'Blue Support Pick',
+                        red_top_enc: 'Red Top Pick',
+                        red_jng_enc: 'Red Jungle Pick',
+                        red_mid_enc: 'Red Mid Pick',
+                        red_bot_enc: 'Red Bot Pick',
+                        red_sup_enc: 'Red Support Pick',
+                      }
+
+                      const formatFeatureName = (feat: string) => {
+                        if (featureLabels[feat]) return featureLabels[feat]
+                        return feat
+                          .replace(/_enc$/, ' Pick')
+                          .replace(/_wr$/, ' WR')
+                          .split('_')
+                          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                          .join(' ')
+                      }
+
+                      return (
+                        <div className="shap-driver-row" key={driver.feature}>
+                          <span className="shap-driver-label" title={driver.feature}>
+                            {formatFeatureName(driver.feature)}
+                          </span>
+                          <div className="driver-bar-bg">
+                            <div
+                              className={`driver-bar-fill ${isPositive ? 'positive' : 'negative'}`}
+                              style={{ width: `${barWidth}%` }}
+                            />
+                          </div>
+                          <span className={`driver-bar-value ${isPositive ? 'positive' : 'negative'}`}>
+                            {displayVal}
+                          </span>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </section>
+        </aside>
         <div className="backend-entry" aria-live="polite">
           Model source: {prediction.source === 'backend' ? 'Backend API' : 'Local fallback'}
         </div>
