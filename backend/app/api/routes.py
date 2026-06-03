@@ -1,3 +1,5 @@
+import os
+import json
 import numpy as np
 import pandas as pd
 import shap
@@ -8,6 +10,15 @@ from itertools import combinations
 from app.agents import agent_app
 
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Module-level path constants: computed from this file's location so that
+# the project survives filesystem moves and works on any OS (Linux, macOS,
+# Windows) without hardcoded drive letters.
+# ---------------------------------------------------------------------------
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_CHAMPIONS_JSON = os.path.join(_PROJECT_ROOT, "frontend", "src", "assets", "data", "champions.json")
+_ROLE_MAPPING_JSON = os.path.join(_PROJECT_ROOT, "backend", "data", "role_mapping.json")
 
 
 def get_slot_champion(slots_dict, role_col_part):
@@ -23,33 +34,45 @@ def get_slot_champion(slots_dict, role_col_part):
 
 
 def assign_picks_to_roles(picks: List[str], is_blue: bool, encoders) -> dict:
+    """Assign champion picks to roles using a data-driven mapping from pro games.
+    
+    Loads ``role_mapping.json`` (computed from 4,592 pro matches) to get each
+    champion's primary lane. Falls back to the tag-based heuristic for champions
+    not in the mapping (new or unplayed picks).
+    """
     role_keys = ["top", "jng", "mid", "bot", "sup"]
     prefix = "blue_" if is_blue else "red_"
-    
-    import json
-    import os
-    frontend_json_path = r"c:\Dev\group-projects\WIF3009-project\frontend\src\assets\data\champions.json"
+
+    # ---- Load data-driven role mapping ----
     champ_roles = {}
-    if os.path.exists(frontend_json_path):
+    if os.path.exists(_ROLE_MAPPING_JSON):
         try:
-            with open(frontend_json_path, "r", encoding="utf-8") as f:
+            with open(_ROLE_MAPPING_JSON, "r", encoding="utf-8") as f:
+                role_mapping = json.load(f)
+            champ_roles = {name: info["primary"] for name, info in role_mapping.items()}
+        except Exception:
+            pass
+
+    # ---- Tag-based heuristic fallback (for champions missing from pro data) ----
+    tag_fallback = {}
+    if os.path.exists(_CHAMPIONS_JSON):
+        try:
+            with open(_CHAMPIONS_JSON, "r", encoding="utf-8") as f:
                 champ_data = json.load(f)
-                for c in champ_data.get("champions", []):
-                    tags = c.get("tags", [])
-                    name = c.get("name")
-                    if "Support" in tags:
-                        best = "sup"
-                    elif "Marksman" in tags:
-                        best = "bot"
-                    elif "Mage" in tags or "Assassin" in tags:
-                        best = "mid"
-                    elif "Tank" in tags:
-                        best = "top"
-                    elif "Fighter" in tags:
-                        best = "jng"
-                    else:
-                        best = "mid"
-                    champ_roles[name] = best
+            tag_table = {
+                "Support": "sup", "Marksman": "bot", "Mage": "mid",
+                "Assassin": "mid", "Tank": "top", "Fighter": "jng",
+            }
+            for c in champ_data.get("champions", []):
+                name = c.get("name")
+                tags = c.get("tags", [])
+                fallback = "mid"
+                for t in ("Support", "Marksman", "Mage", "Assassin", "Tank", "Fighter"):
+                    if t in tags:
+                        fallback = tag_table[t]
+                        break
+                if name and name not in champ_roles:
+                    champ_roles[name] = fallback
         except Exception:
             pass
 
@@ -323,13 +346,10 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
     # 2. Legacy/Local Calibrated Model Path (Zero Load-in-Route Execution)
     if req.draft_state is not None:
         # Resolve champion IDs to display names from the frontend champions.json
-        import json
-        import os
-        frontend_json_path = r"c:\Dev\group-projects\WIF3009-project\frontend\src\assets\data\champions.json"
         id_to_name = {}
-        if os.path.exists(frontend_json_path):
+        if os.path.exists(_CHAMPIONS_JSON):
             try:
-                with open(frontend_json_path, "r", encoding="utf-8") as f:
+                with open(_CHAMPIONS_JSON, "r", encoding="utf-8") as f:
                     champ_data = json.load(f)
                     id_to_name = {c["id"]: c["name"] for c in champ_data.get("champions", [])}
             except Exception as e:
@@ -580,13 +600,10 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
 @router.post("/predict")
 def predict_endpoint(payload: DraftPayload, request: Request) -> dict:
     """Fast, zero-load local inference route for real-time draft prediction."""
-    import json
-    import os
-    frontend_json_path = r"c:\Dev\group-projects\WIF3009-project\frontend\src\assets\data\champions.json"
     id_to_name = {}
-    if os.path.exists(frontend_json_path):
+    if os.path.exists(_CHAMPIONS_JSON):
         try:
-            with open(frontend_json_path, "r", encoding="utf-8") as f:
+            with open(_CHAMPIONS_JSON, "r", encoding="utf-8") as f:
                 champ_data = json.load(f)
                 id_to_name = {c["id"]: c["name"] for c in champ_data.get("champions", [])}
         except Exception as e:
