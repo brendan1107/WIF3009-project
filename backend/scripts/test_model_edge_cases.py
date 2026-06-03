@@ -24,7 +24,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 PROJECT_DIR = BACKEND_DIR.parent
 CHAMPIONS_JSON = PROJECT_DIR / "frontend" / "src" / "assets" / "data" / "champions.json"
 ROLES = ["TOP", "JUNGLE", "MID", "BOTTOM", "SUPPORT"]
-V2_FEATURE_COLS = [
+V2_CORE_FEATURE_COLS = [
     "patch_enc",
     "league_enc",
     "blue_top_wr",
@@ -49,6 +49,7 @@ V2_FEATURE_COLS = [
 sys.path.insert(0, str(BACKEND_DIR))
 
 from app.main import app  # noqa: E402
+from app.services.model_features import ROLE_COLS, build_model_row, postprocess_probability  # noqa: E402
 
 
 def load_champions() -> list[dict[str, Any]]:
@@ -115,10 +116,10 @@ def assert_root_probability(body: dict[str, Any]) -> None:
 
 
 def assert_feature_contributions(body: dict[str, Any]) -> None:
-    missing = [feature for feature in V2_FEATURE_COLS if feature not in body]
+    missing = [feature for feature in V2_CORE_FEATURE_COLS if feature not in body]
     if missing:
         raise AssertionError(f"Missing v2 SHAP features: {missing}")
-    for feature in V2_FEATURE_COLS:
+    for feature in V2_CORE_FEATURE_COLS:
         value = body[feature]
         if not isinstance(value, (int, float)) or not math.isfinite(value):
             raise AssertionError(f"Expected finite contribution for {feature}, got {value!r}")
@@ -149,12 +150,63 @@ def main() -> int:
     with TestClient(app) as client:
 
         def model_contract_is_v2() -> None:
-            if list(client.app.state.feature_cols) != V2_FEATURE_COLS:
-                raise AssertionError(f"Unexpected v2 feature columns: {client.app.state.feature_cols}")
+            missing_core = [
+                feature
+                for feature in V2_CORE_FEATURE_COLS
+                if feature not in client.app.state.feature_cols
+            ]
+            if missing_core:
+                raise AssertionError(f"Missing core v2 feature columns: {missing_core}")
             if not hasattr(client.app.state, "champ_role_wr_map"):
                 raise AssertionError("Missing v2 champion-role win-rate map")
             if not hasattr(client.app.state, "wr_map"):
                 raise AssertionError("Missing v2 global champion win-rate map")
+
+        def role_encoded_features_are_built() -> None:
+            def encoded_champion_for(encoder_name: str, role_part: str) -> str:
+                suffix = f"_{role_part}"
+                for value in client.app.state.encoders[encoder_name].classes_:
+                    if value.startswith("UNKNOWN") or not value.endswith(suffix):
+                        continue
+                    return value[: -len(suffix)]
+                raise AssertionError(f"No encoded champion found for {encoder_name}")
+
+            support_champion = encoded_champion_for("blue_sup", "sup")
+            bot_champion = encoded_champion_for("red_bot", "bot")
+            row = build_model_row(
+                {"SUPPORT": support_champion},
+                {"BOTTOM": bot_champion},
+                client.app.state,
+            )
+            missing_encoded = [f"{col}_enc" for col in ROLE_COLS if f"{col}_enc" not in row]
+            if missing_encoded:
+                raise AssertionError(f"Missing encoded champion-role columns: {missing_encoded}")
+
+            missing_required = [feature for feature in client.app.state.feature_cols if feature not in row]
+            if missing_required:
+                raise AssertionError(f"Model-required features missing from row: {missing_required}")
+
+            selected_keys = {
+                "blue_sup_enc": row["blue_sup_enc"],
+                "red_bot_enc": row["red_bot_enc"],
+            }
+            for key, value in selected_keys.items():
+                if not isinstance(value, int) or value < 0:
+                    raise AssertionError(f"Expected valid selected role encoding for {key}, got {value}")
+
+        def probability_postprocessing_shrinks_sparse_drafts() -> None:
+            if not math.isclose(postprocess_probability(0.95, 10), 0.85, abs_tol=1e-12):
+                raise AssertionError("Expected full-draft high probability to clamp at 0.85")
+            if not math.isclose(postprocess_probability(0.05, 10), 0.15, abs_tol=1e-12):
+                raise AssertionError("Expected full-draft low probability to clamp at 0.15")
+            if not math.isclose(postprocess_probability(0.95, 1), 0.545, abs_tol=1e-12):
+                raise AssertionError("Expected first-pick high probability to shrink before clamping")
+            if not math.isclose(postprocess_probability(0.05, 1), 0.455, abs_tol=1e-12):
+                raise AssertionError("Expected first-pick low probability to shrink before clamping")
+            if not math.isclose(postprocess_probability(0.75, 2), 0.55, abs_tol=1e-12):
+                raise AssertionError("Expected sparse high probability to shrink toward 0.5")
+            if not math.isclose(postprocess_probability(0.25, 2), 0.45, abs_tol=1e-12):
+                raise AssertionError("Expected sparse low probability to shrink toward 0.5")
 
         def empty_draft_returns_neutral_prediction() -> None:
             body = post_json(client, "/api/v1/predict", draft_payload([], []))
@@ -237,6 +289,8 @@ def main() -> int:
 
         cases = [
             ("model contract is v2", model_contract_is_v2),
+            ("role encoded features are built", role_encoded_features_are_built),
+            ("probability postprocessing shrinks sparse drafts", probability_postprocessing_shrinks_sparse_drafts),
             ("empty draft returns 50/50", empty_draft_returns_neutral_prediction),
             ("five support heroes are accepted", five_supports_are_accepted_and_finite),
             ("five support heroes are deterministic", five_supports_are_deterministic),

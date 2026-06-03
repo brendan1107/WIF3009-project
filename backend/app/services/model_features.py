@@ -46,8 +46,8 @@ ROLE_COLS = [
 
 BLUE_ROLE_COLS = ROLE_COLS[:5]
 RED_ROLE_COLS = ROLE_COLS[5:]
-DEFAULT_PATCH = "16.1"
-DEFAULT_LEAGUE = "LCK"
+DEFAULT_PATCH = "UNKNOWN"
+DEFAULT_LEAGUE = "UNKNOWN"
 
 
 def normalize_role_part(role: Optional[str]) -> Optional[str]:
@@ -85,6 +85,36 @@ def encode_value(encoders: Mapping[str, Any], encoder_name: str, value: str) -> 
     if value in classes:
         return int(encoder.transform([value])[0])
     return int(encoder.transform([classes[0]])[0])
+
+
+def safe_encode_role_champion(
+    encoders: Mapping[str, Any],
+    encoder_name: str,
+    champion: Optional[str],
+    role_part: str,
+) -> int:
+    encoder = encoders.get(encoder_name)
+    if encoder is None:
+        return -1
+
+    if champion:
+        value = f"{champion}_{role_part}"
+    else:
+        value = f"UNKNOWN_{role_part}"
+
+    classes = list(encoder.classes_)
+
+    if value in classes:
+        return int(encoder.transform([value])[0])
+
+    unknown_role = f"UNKNOWN_{role_part}"
+    if unknown_role in classes:
+        return int(encoder.transform([unknown_role])[0])
+
+    if "UNKNOWN" in classes:
+        return int(encoder.transform(["UNKNOWN"])[0])
+
+    return -1
 
 
 def role_wr(
@@ -148,6 +178,7 @@ def build_model_row(
 
         keyed_champion = role_key(champion, role_part)
         row[col] = champion or ""
+        row[f"{col}_enc"] = safe_encode_role_champion(encoders, col, champion, role_part)
         selected_role_keys[col] = keyed_champion
         row[f"{col}_wr"] = role_wr(
             champion,
@@ -173,13 +204,30 @@ def build_model_row(
 
 def feature_frame(rows: Sequence[Mapping[str, Any]], feature_cols: Sequence[str]) -> pd.DataFrame:
     frame = pd.DataFrame(rows)
+    missing = [col for col in feature_cols if col not in frame.columns]
+    if missing:
+        print("WARNING: Missing model features:", missing)
     return frame.reindex(columns=feature_cols, fill_value=0.0).copy()
+
+
+def postprocess_probability(probability: float, picks_filled: Any) -> float:
+    proba = float(probability)
+    try:
+        filled = float(picks_filled)
+    except (TypeError, ValueError):
+        filled = 10.0
+    confidence_weight = max(0.0, min(1.0, filled / 10.0))
+    shrunk = 0.5 + (proba - 0.5) * confidence_weight
+    return max(0.15, min(0.85, shrunk))
 
 
 def predict_blue_win_probability(model: Any, rows: Sequence[Mapping[str, Any]], feature_cols: Sequence[str]) -> List[float]:
     features = feature_frame(rows, feature_cols)
     probabilities = model.predict_proba(features)
-    return [float(prob[1]) for prob in probabilities]
+    return [
+        postprocess_probability(float(prob[1]), row.get("picks_filled", 10))
+        for prob, row in zip(probabilities, rows)
+    ]
 
 
 def shap_contributions(shap_explainer: Any, row: Mapping[str, Any], feature_cols: Sequence[str]) -> Dict[str, float]:

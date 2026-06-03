@@ -246,9 +246,8 @@ function championMetrics(champion: Champion, role: Role) {
     champion.info.difficulty * 0.05
   const keyNoise = (Number(champion.key) % 17) / 10
   const winRate = clamp(base + keyNoise, 45.5, 53.4)
-  const sampleSize = 8700 + (Number(champion.key) % 8500)
 
-  return { winRate, sampleSize }
+  return { winRate }
 }
 
 function teamScore(slots: Slot[]) {
@@ -474,6 +473,7 @@ function TeamPanel({
 function App() {
   const [scale, setScale] = useState(1)
   const [assistantOpen, setAssistantOpen] = useState(false)
+  const [statsPanelOpen, setStatsPanelOpen] = useState(false)
 
   useEffect(() => {
     const handleResize = () => {
@@ -486,13 +486,6 @@ function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const [activeTab, setActiveTab] = useState<'stats' | 'metaProver'>('stats')
-  const [opChampions, setOpChampions] = useState<Array<{
-    champion: string
-    mean_contribution: number
-    mean_abs_contribution: number
-    count: number
-  }>>([])
   const [blueSlots, setBlueSlots] = useState(initialBlueSlots)
   const [redSlots, setRedSlots] = useState(initialRedSlots)
   const [stepIndex, setStepIndex] = useState(0)
@@ -586,12 +579,6 @@ function App() {
             globalAvgWr: data.global_avg_wr,
           })
         }
-
-        const opResponse = await fetch(`${apiBase}/champions/op`)
-        if (opResponse.ok) {
-          const opData = await opResponse.json()
-          setOpChampions(opData.op_champions || [])
-        }
       } catch (err) {
         console.error("Failed to fetch champion metrics from backend:", err)
       }
@@ -606,7 +593,6 @@ function App() {
       if (modelWinRate !== undefined) {
         return {
           winRate: modelWinRate,
-          sampleSize: local.sampleSize
         }
       }
       if (!champMetrics) return local
@@ -618,7 +604,6 @@ function App() {
 
       return {
         winRate: realWr,
-        sampleSize: local.sampleSize
       }
     }
   }, [champMetrics, modelOptionWinRates])
@@ -750,19 +735,32 @@ function App() {
   }, [allowedOptionRoles, displayedChampionOptions, getRealMetrics])
 
   useEffect(() => {
-    if (!canSelectChampion || activeSlotIndex === undefined) {
-      setOptionWinRatesLoading(false)
-      setFrozenChampionOptions(null)
-      return
+    let cancelled = false
+    const queueOptionStateUpdate = (update: () => void) => {
+      window.queueMicrotask(() => {
+        if (!cancelled) update()
+      })
     }
 
-    let cancelled = false
+    if (!canSelectChampion || activeSlotIndex === undefined) {
+      queueOptionStateUpdate(() => {
+        setOptionWinRatesLoading(false)
+        setFrozenChampionOptions(null)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
 
     if (filteredChampionOptions.length === 0) {
-      setModelOptionWinRates({})
-      setOptionWinRatesLoading(false)
-      setFrozenChampionOptions(null)
-      return
+      queueOptionStateUpdate(() => {
+        setModelOptionWinRates({})
+        setOptionWinRatesLoading(false)
+        setFrozenChampionOptions(null)
+      })
+      return () => {
+        cancelled = true
+      }
     }
 
     const draftState: DraftPayload = {
@@ -773,12 +771,16 @@ function App() {
       stepIndex,
     }
 
-    setFrozenChampionOptions(
+    const frozenOptions =
       lastRenderedChampionOptionsRef.current.length > 0
         ? lastRenderedChampionOptionsRef.current
-        : filteredChampionOptions,
-    )
-    setOptionWinRatesLoading(true)
+        : filteredChampionOptions
+
+    queueOptionStateUpdate(() => {
+      setFrozenChampionOptions(frozenOptions)
+      setOptionWinRatesLoading(true)
+    })
+
     requestOptionWinRates(draftState, filteredChampionOptions)
       .then((result) => {
         if (!cancelled && result) {
@@ -924,7 +926,7 @@ function App() {
   return (
     <div className="scaler-wrapper">
       <main className="draft-shell" style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
-        <div className="left-layout">
+        <div className={`left-layout ${statsPanelOpen ? 'stats-expanded' : 'stats-collapsed'}`}>
           <header className="top-bar">
             <div className="brand-lockup">
               <div className="brand-crest" aria-hidden="true">R</div>
@@ -1121,69 +1123,55 @@ function App() {
             />
           </section>
 
-          <section className="data-panel stats-panel">
-            <div className="panel-tabs" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-              <button
-                className={activeTab === 'stats' ? 'selected' : ''}
-                onClick={() => setActiveTab('stats')}
-                type="button"
-              >
-                Champion Stats
-              </button>
-              <button
-                className={activeTab === 'metaProver' ? 'selected' : ''}
-                onClick={() => setActiveTab('metaProver')}
-                type="button"
-              >
-                Meta-Prover (OP)
-              </button>
-            </div>
-            {activeTab === 'stats' && (
-              <div className="stats-table" role="table" aria-label="Champion stats">
-                <div className="stats-row heading" role="row">
-                  <span>Champion</span>
-                  <span>Role</span>
-                  <span>Win Rate</span>
-                  <span>Sample Size</span>
-                </div>
-                {statRows.map(({ champion, metrics, role }) => (
-                  <div className="stats-row" key={optionId(champion.id, role)} role="row">
-                    <span className="stat-champion">
-                      <ChampionPortrait id={champion.id} alt={champion.name} />
-                      {champion.name}
-                    </span>
-                    <span>{roleLabel(role)}</span>
-                    <strong>{metrics.winRate.toFixed(1)}%</strong>
-                    <span>{metrics.sampleSize.toLocaleString()}</span>
+          <section className={`data-panel stats-panel ${statsPanelOpen ? 'expanded' : 'collapsed'}`}>
+            {statsPanelOpen ? (
+              <>
+                <div className="stats-panel-header">
+                  <div>
+                    <strong>Champion Stats</strong>
+                    <span>Recommended picks ranked by projected win rate</span>
                   </div>
-                ))}
-              </div>
-            )}
-            {activeTab === 'metaProver' && (
-              <div className="stats-table" role="table" aria-label="Meta-Prover OP champions" style={{ gridTemplateRows: "repeat(6, minmax(0, 1fr))" }}>
-                <div className="stats-row heading" role="row" style={{ gridTemplateColumns: "minmax(150px, 1.3fr) 1fr 1fr 0.9fr" }}>
-                  <span>Champion</span>
-                  <span>Mean SHAP Impact</span>
-                  <span>Mean Abs SHAP</span>
-                  <span>Games Analyzed</span>
+                  <button
+                    aria-label="Hide champion stats"
+                    className="stats-collapse-button"
+                    onClick={() => setStatsPanelOpen(false)}
+                    type="button"
+                  >
+                    <span aria-hidden="true">^</span>
+                    Hide Stats
+                  </button>
                 </div>
-                {opChampions.slice(0, 5).map((op) => {
-                  const champObj = champions.find(c => c.name === op.champion)
-                  const isPositive = op.mean_contribution >= 0
-                  return (
-                    <div className="stats-row" key={op.champion} role="row" style={{ gridTemplateColumns: "minmax(150px, 1.3fr) 1fr 1fr 0.9fr" }}>
+                <div className="stats-table" role="table" aria-label="Champion stats">
+                  <div className="stats-row heading" role="row">
+                    <span>Champion</span>
+                    <span>Role</span>
+                    <span>Win Rate</span>
+                  </div>
+                  {statRows.map(({ champion, metrics, role }) => (
+                    <div className="stats-row" key={optionId(champion.id, role)} role="row">
                       <span className="stat-champion">
-                        <ChampionPortrait id={champObj?.id} alt={op.champion} />
-                        {op.champion}
+                        <ChampionPortrait id={champion.id} alt={champion.name} />
+                        {champion.name}
                       </span>
-                      <strong className={isPositive ? 'positive' : 'negative'} style={{ color: isPositive ? '#6fca68' : '#ff4c4c' }}>
-                        {isPositive ? '+' : ''}{(op.mean_contribution * 100).toFixed(2)}%
-                      </strong>
-                      <span>{(op.mean_abs_contribution * 100).toFixed(2)}%</span>
-                      <span>{op.count}</span>
+                      <span>{roleLabel(role)}</span>
+                      <strong>{metrics.winRate.toFixed(1)}%</strong>
                     </div>
-                  )
-                })}
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="stats-bubble-group" aria-label="Open stats panel">
+                <button
+                  aria-label="Show champion stats"
+                  aria-expanded={statsPanelOpen}
+                  className="stats-bubble"
+                  onClick={() => setStatsPanelOpen(true)}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="stats-bubble-icon">i</span>
+                  <strong>Champion Stats</strong>
+                  <em aria-hidden="true">Show</em>
+                </button>
               </div>
             )}
           </section>
@@ -1197,7 +1185,6 @@ function App() {
             onClick={() => setAssistantOpen((isOpen) => !isOpen)}
             type="button"
           >
-            <span className="assistant-rail-mark">AI</span>
             <span className="assistant-rail-label">Coach</span>
             <span className={`assistant-rail-dot ${loadingCoach ? 'loading' : ''}`} />
           </button>

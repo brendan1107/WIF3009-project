@@ -70,6 +70,8 @@ fastapi dev app/main.py
 
 ## Active Model Contract
 
-The active v2 model uses exactly 19 features: `patch_enc`, `league_enc`, the ten role win-rate features, `blue_synergy`, `red_synergy`, `blue_team_avg_wr`, `red_team_avg_wr`, `wr_diff`, `synergy_diff`, and `picks_filled`.
+The active v2 model uses `feature_cols_v2.pkl` as the source of truth. Core generated features include `patch_enc`, `league_enc`, the ten role win-rate features, `blue_synergy`, `red_synergy`, `blue_team_avg_wr`, `red_team_avg_wr`, `wr_diff`, `synergy_diff`, and `picks_filled`. If the model artifact expects encoded champion-role columns such as `blue_top_enc` or `red_bot_enc`, the backend now generates those too.
 
-Champion inputs are transformed into role-qualified keys such as `Caitlyn_bot` and `Lee Sin_jng`. Role win rates fall back to global champion win rate, then the serialized global average. Missing draft slots use the global average and are counted through `picks_filled`.
+Champion inputs are transformed into role-qualified keys such as `Caitlyn_bot` and `Lee Sin_jng`. Role win rates fall back to global champion win rate, then the serialized global average. Missing draft slots use the global average, encode as `UNKNOWN_{role}`, and are counted through `picks_filled`. Patch and league are generated internally and default to `UNKNOWN`.
+
+Predicted probabilities are post-processed before returning to clients: raw model output is weighted back toward 50/50 using `picks_filled / 10`, then clamped to 15-85%.
