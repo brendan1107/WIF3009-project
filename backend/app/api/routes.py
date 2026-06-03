@@ -148,7 +148,10 @@ def simulate_win_rate_locally(
         le = encoders[encoder_name]
         if val in le.classes_:
             return le.transform([val])[0]
-        return le.transform([le.classes_[0]])[0]
+        # Unknown champion: use median encoding (neutral) instead of injecting
+        # a real champion (classes_[0]), which makes multiple unseen champs
+        # collapse into the same phantom pick.
+        return median_enc.get(encoder_name, len(encoders[encoder_name].classes_) // 2)
 
     for col in role_cols:
         row[f"{col}_enc"] = encode_val(col, row[col])
@@ -446,7 +449,10 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
                 le = encoders[encoder_name]
                 if val in le.classes_:
                     return le.transform([val])[0]
-                return le.transform([le.classes_[0]])[0]
+                # Unknown champion: use median encoding (neutral) instead of injecting
+                # a real champion (classes_[0]), which makes multiple unseen champs
+                # collapse into the same phantom pick.
+                return median_enc.get(encoder_name, len(encoders[encoder_name].classes_) // 2)
 
             for col in role_cols:
                 row[f"{col}_enc"] = encode_val(col, row[col])
@@ -667,7 +673,10 @@ def predict_endpoint(payload: DraftPayload, request: Request) -> dict:
         le = encoders[encoder_name]
         if val in le.classes_:
             return le.transform([val])[0]
-        return le.transform([le.classes_[0]])[0]
+        # Unknown champion: use median encoding (neutral) instead of injecting
+        # a real champion (classes_[0]), which makes multiple unseen champs
+        # collapse into the same phantom pick.
+        return median_enc.get(encoder_name, len(encoders[encoder_name].classes_) // 2)
 
     for col in role_cols:
         row[f"{col}_enc"] = encode_val(col, row[col])
@@ -795,7 +804,10 @@ def root_predict_endpoint(payload: SimplePredictPayload, request: Request) -> di
         le = encoders[encoder_name]
         if val in le.classes_:
             return le.transform([val])[0]
-        return le.transform([le.classes_[0]])[0]
+        # Unknown champion: use median encoding (neutral) instead of injecting
+        # a real champion (classes_[0]), which makes multiple unseen champs
+        # collapse into the same phantom pick.
+        return median_enc.get(encoder_name, len(encoders[encoder_name].classes_) // 2)
 
     for col in role_cols:
         row[f"{col}_enc"] = encode_val(col, row[col])
@@ -874,7 +886,10 @@ def root_explain_endpoint(payload: SimpleExplainPayload, request: Request) -> di
         le = encoders[encoder_name]
         if val in le.classes_:
             return le.transform([val])[0]
-        return le.transform([le.classes_[0]])[0]
+        # Unknown champion: use median encoding (neutral) instead of injecting
+        # a real champion (classes_[0]), which makes multiple unseen champs
+        # collapse into the same phantom pick.
+        return len(le.classes_) // 2
 
     for col in role_cols:
         row[f"{col}_enc"] = encode_val(col, row[col])
