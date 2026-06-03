@@ -245,7 +245,10 @@ function teamScore(slots: Slot[]) {
 function localPrediction(payload: DraftPayload): Prediction {
   const blueFilled = payload.bluePicks.filter((slot) => slot.championId).length
   const redFilled = payload.redPicks.filter((slot) => slot.championId).length
-  if (blueFilled === 0 && redFilled === 0) {
+
+  // Gate: return 50/50 when either team has no picks yet.
+  // Without an opposing draft there is no signal to compare against.
+  if (blueFilled === 0 || redFilled === 0) {
     return {
       blueWinRate: 50.0,
       redWinRate: 50.0,
@@ -259,11 +262,16 @@ function localPrediction(payload: DraftPayload): Prediction {
   const redBans = payload.redBans.filter(Boolean).length
   const banPressure = (redBans - blueBans) * 0.18
   const activeBonus = payload.activeTeam === 'blue' ? 0.35 : -0.35
-  const blueWinRate = clamp(
+  const rawBlueWinRate = clamp(
     50 + (blueScore - redScore) * 0.16 + (blueFilled - redFilled) * 0.72 + banPressure + activeBonus,
     38,
     62,
   )
+
+  // Linear completeness scaling: shrink deviation from 50% proportionally
+  // to how complete the least-filled side is (mirrors backend behaviour).
+  const completenessFactor = Math.min(blueFilled, redFilled) / 5
+  const blueWinRate = 50 + (rawBlueWinRate - 50) * completenessFactor
 
   return {
     blueWinRate: Number(blueWinRate.toFixed(1)),

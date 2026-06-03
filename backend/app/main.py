@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI):
         champ_wr_path = os.path.join(BASE_DIR, "data", "Parquets", "champ_winrates.parquet")
         champ_syn_path = os.path.join(BASE_DIR, "data", "Parquets", "champ_synergies.parquet")
         champ_cnt_path = os.path.join(BASE_DIR, "data", "Parquets", "champ_counters.parquet")
+        final_draft_path = os.path.join(BASE_DIR, "data", "Parquets", "final_draft.parquet")
         
         app.state.champ_wr = pl.read_parquet(champ_wr_path)
         app.state.champ_synergies = pl.read_parquet(champ_syn_path)
@@ -116,7 +117,38 @@ async def lifespan(app: FastAPI):
         op_list = sorted(op_list, key=lambda x: x["mean_contribution"], reverse=True)
         app.state.op_champions = op_list
         print(f"Pre-calculated {len(op_list)} global OP champions successfully.")
-        
+
+        # --- Neutral inference defaults (used to stabilise mid-draft predictions) ---
+        # 1. Latest patch in correct encoder format (avoids silent fallback to "16.01")
+        app.state.latest_patch = app.state.encoders["patch"].classes_[-1]
+        print(f"Latest patch resolved to: {app.state.latest_patch}")
+
+        # 2. Modal (most common) league from training data — avoids hardcoding LCK
+        try:
+            draft_df = pl.read_parquet(final_draft_path)
+            modal_league = draft_df["league"].value_counts().sort("count", descending=True)["league"][0]
+            if modal_league in app.state.encoders["league"].classes_:
+                app.state.neutral_league = modal_league
+            else:
+                app.state.neutral_league = app.state.encoders["league"].classes_[len(app.state.encoders["league"].classes_) // 2]
+        except Exception as e:
+            print(f"Warning: could not compute modal league ({e}), using median class.")
+            app.state.neutral_league = app.state.encoders["league"].classes_[len(app.state.encoders["league"].classes_) // 2]
+        print(f"Neutral league resolved to: {app.state.neutral_league}")
+
+        # 3. Median encoding index per role column — used as a neutral placeholder for empty slots
+        #    instead of classes_[0] which injects a specific phantom champion (e.g. Aatrox)
+        champion_role_cols = [
+            "blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup",
+            "red_top",  "red_jng",  "red_mid",  "red_bot",  "red_sup",
+        ]
+        app.state.median_enc = {
+            col: len(app.state.encoders[col].classes_) // 2
+            for col in champion_role_cols
+        }
+        print("Neutral median encodings pre-computed for empty draft slots.")
+        # --- End neutral defaults ---
+
         print("All models, encoders, and parquets successfully cached in application state.")
     except Exception as exc:
         print(f"CRITICAL: Failed to load serialized assets during lifespan startup: {exc}")

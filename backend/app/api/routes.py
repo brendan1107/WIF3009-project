@@ -66,17 +66,27 @@ def assign_picks_to_roles(picks: List[str], is_blue: bool, encoders) -> dict:
                 assigned[fallback] = champ
                 remaining_roles.remove(fallback)
                 
+    # Leave unassigned roles as None (empty sentinel) instead of injecting classes_[0].
+    # Callers are responsible for replacing None with _EMPTY before building the feature row.
     for r in role_keys:
         if r not in assigned:
-            col_name = f"{prefix}{r}"
-            assigned[r] = encoders[col_name].classes_[0]
-            
+            assigned[r] = None
+
     return {f"{prefix}{r}": val for r, val in assigned.items()}
+
+
+# Sentinel value representing a draft slot that has not yet been filled.
+# MUST NOT be a real champion name. Used to give empty slots a neutral
+# signal (global_avg_wr for win rate, median label encoding) rather than
+# injecting a specific phantom champion (e.g. Aatrox) that pollutes
+# synergy scores and causes wild mid-draft win rate fluctuations.
+_EMPTY = "__EMPTY__"
 
 
 def simulate_win_rate_locally(
     blue_picks, red_picks, proposed_champion, team,
-    wr_map, pair_map, global_avg_wr, calibrated_model, encoders, feature_cols
+    wr_map, pair_map, global_avg_wr, calibrated_model, encoders, feature_cols,
+    latest_patch="16.01", neutral_league="LCK", median_enc=None
 ) -> float:
     sim_blue = blue_picks.copy()
     sim_red = red_picks.copy()
@@ -92,25 +102,30 @@ def simulate_win_rate_locally(
     row.update(blue_role_picks)
     row.update(red_role_picks)
 
-    row["patch"] = "16.1"
-    row["league"] = "LCK"
-    row["blue_team"] = encoders["blue_team"].classes_[0]
-    row["red_team"] = encoders["red_team"].classes_[0]
+    # Replace None values with the empty sentinel
+    for col in row:
+        if row[col] is None:
+            row[col] = _EMPTY
+
+    row["patch"] = latest_patch
+    row["league"] = neutral_league
 
     role_cols = [
         "blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup",
         "red_top", "red_jng", "red_mid", "red_bot", "red_sup"
     ]
 
+    # Empty slots get global average win rate; real champions get their actual win rate
     for col in role_cols:
-        row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
+        row[f"{col}_wr"] = global_avg_wr if row[col] == _EMPTY else wr_map.get(row[col], global_avg_wr)
 
     blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
     red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
 
     def team_synergy_score(champs):
         scores = []
-        valid = [c for c in champs if pd.notna(c) and c != ""]
+        # Exclude empty sentinels from synergy — they have no real champion to pair with
+        valid = [c for c in champs if c and c != _EMPTY and pd.notna(c)]
         for c1, c2 in combinations(valid, 2):
             key = tuple(sorted([c1, c2]))
             if key in pair_map:
@@ -125,6 +140,11 @@ def simulate_win_rate_locally(
     row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
 
     def encode_val(encoder_name, val):
+        if val == _EMPTY:
+            # Use median class index as a neutral encoding for unfilled slots
+            if median_enc and encoder_name in median_enc:
+                return median_enc[encoder_name]
+            return len(encoders[encoder_name].classes_) // 2
         le = encoders[encoder_name]
         if val in le.classes_:
             return le.transform([val])[0]
@@ -135,8 +155,8 @@ def simulate_win_rate_locally(
 
     row["patch_enc"] = encode_val("patch", row["patch"])
     row["league_enc"] = encode_val("league", row["league"])
-    row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
-    row["red_team_enc"] = encode_val("red_team", row["red_team"])
+    row["blue_team_enc"] = len(encoders["blue_team"].classes_) // 2
+    row["red_team_enc"] = len(encoders["red_team"].classes_) // 2
 
     X_test = pd.DataFrame([row])
     X_features = X_test[feature_cols].copy()
@@ -146,7 +166,12 @@ def simulate_win_rate_locally(
         X_features[c] = X_features[c].astype("category")
 
     probs = calibrated_model.predict_proba(X_features)
-    return float(probs[0][1])
+    raw_prob = float(probs[0][1])
+
+    # Scale confidence toward 50% proportional to draft completeness.
+    # sim_blue/sim_red already include the proposed champion, so counts are 1-based.
+    completeness_factor = min(len(sim_blue), len(sim_red)) / 5.0
+    return 0.5 + (raw_prob - 0.5) * completeness_factor
 
 
 def calculate_ban_recommendations(
@@ -358,20 +383,24 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
                 "top_drivers": []
             }
 
-        blue_selected = len(blue_picks) > 0
-        red_selected = len(red_picks) > 0
+        blue_count = len(blue_picks)
+        red_count  = len(red_picks)
 
-        # Construct feature row if there are picks
-        if blue_selected or red_selected:
+        # Construct feature row only when both teams have at least one pick.
+        # With zero enemy picks the model has no meaningful signal.
+        if blue_count > 0 and red_count > 0:
             calibrated_model = request.app.state.calibrated_model
             encoders = request.app.state.encoders
             feature_cols = request.app.state.feature_cols
             shap_explainer = request.app.state.shap_explainer
+            latest_patch = getattr(request.app.state, "latest_patch", encoders["patch"].classes_[-1])
+            neutral_league = getattr(request.app.state, "neutral_league", "LCK")
+            median_enc = getattr(request.app.state, "median_enc", {})
 
-            # Local helper for synergy
+            # Local helper for synergy — excludes empty sentinels
             def team_synergy_score(champs):
                 scores = []
-                valid = [c for c in champs if pd.notna(c) and c != ""]
+                valid = [c for c in champs if c and c != _EMPTY and pd.notna(c)]
                 for c1, c2 in combinations(valid, 2):
                     key = tuple(sorted([c1, c2]))
                     if key in pair_map:
@@ -390,17 +419,16 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
             for col in role_cols:
                 role_part = col.split("_")[1]
                 if col.startswith("blue"):
-                    row[col] = get_slot_champion(blue_slots, role_part) or encoders[col].classes_[0]
+                    row[col] = get_slot_champion(blue_slots, role_part) or _EMPTY
                 else:
-                    row[col] = get_slot_champion(red_slots, role_part) or encoders[col].classes_[0]
+                    row[col] = get_slot_champion(red_slots, role_part) or _EMPTY
 
-            row["patch"] = "16.1"
-            row["league"] = "LCK"
-            row["blue_team"] = encoders["blue_team"].classes_[0]
-            row["red_team"] = encoders["red_team"].classes_[0]
+            row["patch"] = latest_patch
+            row["league"] = neutral_league
 
+            # Empty slots get global average win rate; real champions get their actual win rate
             for col in role_cols:
-                row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
+                row[f"{col}_wr"] = global_avg_wr if row[col] == _EMPTY else wr_map.get(row[col], global_avg_wr)
 
             blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
             red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
@@ -413,6 +441,8 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
             row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
 
             def encode_val(encoder_name, val):
+                if val == _EMPTY:
+                    return median_enc.get(encoder_name, len(encoders[encoder_name].classes_) // 2)
                 le = encoders[encoder_name]
                 if val in le.classes_:
                     return le.transform([val])[0]
@@ -423,8 +453,8 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
 
             row["patch_enc"] = encode_val("patch", row["patch"])
             row["league_enc"] = encode_val("league", row["league"])
-            row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
-            row["red_team_enc"] = encode_val("red_team", row["red_team"])
+            row["blue_team_enc"] = len(encoders["blue_team"].classes_) // 2
+            row["red_team_enc"] = len(encoders["red_team"].classes_) // 2
 
             X_test = pd.DataFrame([row])
             X_features = X_test[feature_cols].copy()
@@ -434,7 +464,13 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
                 X_features[c] = X_features[c].astype("category")
 
             probs = calibrated_model.predict_proba(X_features)
-            blue_win_prob = float(probs[0][1])
+            raw_win_prob = float(probs[0][1])
+
+            # Linear completeness scaling: shrink deviation from 50% proportionally
+            # to how many picks the least-filled side has committed (0..5).
+            # At 5v5 the factor is 1.0, so the model output is used unchanged.
+            completeness_factor = min(blue_count, red_count) / 5.0
+            blue_win_prob = 0.5 + (raw_win_prob - 0.5) * completeness_factor
 
             shap_values = shap_explainer(X_features)
             contributions = {}
@@ -474,7 +510,7 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
 
         # Calculate specific matchups counter winrates
         matchup_counters = []
-        if blue_selected or red_selected:
+        if blue_picks or red_picks:
             blue_slots_lookup = {s.role: s.championId for s in req.draft_state.bluePicks if s.championId}
             red_slots_lookup = {s.role: s.championId for s in req.draft_state.redPicks if s.championId}
             roles_to_check = ["TOP", "JUNGLE", "MID", "BOTTOM", "SUPPORT"]
@@ -538,7 +574,6 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
 @router.post("/predict")
 def predict_endpoint(payload: DraftPayload, request: Request) -> dict:
     """Fast, zero-load local inference route for real-time draft prediction."""
-    # Resolve champion IDs to display names from the frontend champions.json
     import json
     import os
     frontend_json_path = r"c:\Dev\group-projects\WIF3009-project\frontend\src\assets\data\champions.json"
@@ -551,7 +586,6 @@ def predict_endpoint(payload: DraftPayload, request: Request) -> dict:
         except Exception as e:
             print(f"Error reading frontend champions.json: {e}")
 
-    # Mutate the payload to use resolved display names
     for s in payload.bluePicks:
         if s.championId and s.championId in id_to_name:
             s.championId = id_to_name[s.championId]
@@ -561,23 +595,28 @@ def predict_endpoint(payload: DraftPayload, request: Request) -> dict:
     payload.blueBans = [id_to_name.get(b, b) if b else "" for b in payload.blueBans]
     payload.redBans = [id_to_name.get(b, b) if b else "" for b in payload.redBans]
 
-    # Check if draft is empty (initial state)
-    blue_selected = any(s.championId for s in payload.bluePicks if s.championId)
-    red_selected = any(s.championId for s in payload.redPicks if s.championId)
-    if not blue_selected and not red_selected:
+    blue_count = sum(1 for s in payload.bluePicks if s.championId)
+    red_count  = sum(1 for s in payload.redPicks  if s.championId)
+
+    # Return 50/50 when either team has no picks yet.
+    # Without an opposing draft the model has no meaningful signal to compare against.
+    if blue_count == 0 or red_count == 0:
         return {"blueWinRate": 50.0, "redWinRate": 50.0}
 
-    # Extract pre-loaded caches from app state
     wr_map = request.app.state.wr_map
     global_avg_wr = request.app.state.global_avg_wr
     pair_map = request.app.state.pair_map
     calibrated_model = request.app.state.calibrated_model
     encoders = request.app.state.encoders
     feature_cols = request.app.state.feature_cols
+    latest_patch = getattr(request.app.state, "latest_patch", encoders["patch"].classes_[-1])
+    neutral_league = getattr(request.app.state, "neutral_league", "LCK")
+    median_enc = getattr(request.app.state, "median_enc", {})
 
     def team_synergy_score(champs):
         scores = []
-        valid = [c for c in champs if pd.notna(c) and c != ""]
+        # Exclude empty sentinels — they are not real picks and must not pollute synergy
+        valid = [c for c in champs if c and c != _EMPTY and pd.notna(c)]
         for c1, c2 in combinations(valid, 2):
             key = tuple(sorted([c1, c2]))
             if key in pair_map:
@@ -585,42 +624,34 @@ def predict_endpoint(payload: DraftPayload, request: Request) -> dict:
         return np.mean(scores) if scores else 0.5
 
     role_cols = [
-        "blue_top",
-        "blue_jng",
-        "blue_mid",
-        "blue_bot",
-        "blue_sup",
-        "red_top",
-        "red_jng",
-        "red_mid",
-        "red_bot",
-        "red_sup",
+        "blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup",
+        "red_top",  "red_jng",  "red_mid",  "red_bot",  "red_sup",
     ]
 
-    # Map slot list to roles
     blue_slots = {s.role: s.championId for s in payload.bluePicks if s.championId}
     red_slots = {s.role: s.championId for s in payload.redPicks if s.championId}
 
     row = {}
-    # Use encoder default first class as a safe fallback if champion not yet selected
+    # Use _EMPTY sentinel for unfilled slots instead of injecting classes_[0].
+    # Previously using classes_[0] (e.g. "Aatrox") caused the synergy score to
+    # be computed against a phantom champion, which drove wild mid-draft win rate
+    # swings (e.g. 80% → 10% on a single pick) via the dominant synergy_diff feature.
     for col in role_cols:
         role_part = col.split("_")[1]
         if col.startswith("blue"):
-            row[col] = get_slot_champion(blue_slots, role_part) or encoders[col].classes_[0]
+            row[col] = get_slot_champion(blue_slots, role_part) or _EMPTY
         else:
-            row[col] = get_slot_champion(red_slots, role_part) or encoders[col].classes_[0]
+            row[col] = get_slot_champion(red_slots, role_part) or _EMPTY
 
-    row["patch"] = "16.1"
-    row["league"] = "LCK"
-    row["blue_team"] = encoders["blue_team"].classes_[0]
-    row["red_team"] = encoders["red_team"].classes_[0]
+    row["patch"] = latest_patch
+    row["league"] = neutral_league
 
-    # Populate features
+    # Empty slots contribute global_avg_wr (neutral signal, not a specific champion's bias)
     for col in role_cols:
-        row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
+        row[f"{col}_wr"] = global_avg_wr if row[col] == _EMPTY else wr_map.get(row[col], global_avg_wr)
 
     blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
-    red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
+    red_roles  = ["red_top",  "red_jng",  "red_mid",  "red_bot",  "red_sup"]
 
     row["blue_synergy"] = team_synergy_score([row[r] for r in blue_roles])
     row["red_synergy"] = team_synergy_score([row[r] for r in red_roles])
@@ -630,6 +661,9 @@ def predict_endpoint(payload: DraftPayload, request: Request) -> dict:
     row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
 
     def encode_val(encoder_name, val):
+        if val == _EMPTY:
+            # Median class index as a neutral encoding for unfilled slots
+            return median_enc.get(encoder_name, len(encoders[encoder_name].classes_) // 2)
         le = encoders[encoder_name]
         if val in le.classes_:
             return le.transform([val])[0]
@@ -640,23 +674,25 @@ def predict_endpoint(payload: DraftPayload, request: Request) -> dict:
 
     row["patch_enc"] = encode_val("patch", row["patch"])
     row["league_enc"] = encode_val("league", row["league"])
-    row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
-    row["red_team_enc"] = encode_val("red_team", row["red_team"])
+    row["blue_team_enc"] = len(encoders["blue_team"].classes_) // 2
+    row["red_team_enc"] = len(encoders["red_team"].classes_) // 2
 
-    # Build DataFrame
     X_test = pd.DataFrame([row])
     X_features = X_test[feature_cols].copy()
 
-    # Cast categoricals
     cat_cols = [c + "_enc" for c in role_cols] + ["patch_enc", "league_enc"]
     for c in cat_cols:
         X_features[c] = X_features[c].astype("category")
 
-    # Inference
     probs = calibrated_model.predict_proba(X_features)
-    blue_win_rate = float(probs[0][1]) * 100
+    raw_win_rate = float(probs[0][1]) * 100
 
-    return {"blueWinRate": blue_win_rate, "redWinRate": 100.0 - blue_win_rate}
+    # Linear completeness scaling — shrink the deviation from 50% proportionally
+    # to the least-filled side. At 5v5 factor = 1.0 (full model output unchanged).
+    completeness_factor = min(blue_count, red_count) / 5.0
+    blue_win_rate = 50.0 + (raw_win_rate - 50.0) * completeness_factor
+
+    return {"blueWinRate": round(blue_win_rate, 1), "redWinRate": round(100.0 - blue_win_rate, 1)}
 
 
 @router.get("/champions/metrics")
@@ -688,56 +724,9 @@ class SimpleExplainPayload(BaseModel):
     blue_picks: List[str]
     red_picks: List[str]
 
-def assign_picks_to_roles(picks: List[str], is_blue: bool, encoders) -> dict:
-    role_keys = ["top", "jng", "mid", "bot", "sup"]
-    prefix = "blue_" if is_blue else "red_"
-    
-    import json
-    import os
-    frontend_json_path = r"c:\Dev\group-projects\WIF3009-project\frontend\src\assets\data\champions.json"
-    champ_roles = {}
-    if os.path.exists(frontend_json_path):
-        try:
-            with open(frontend_json_path, "r", encoding="utf-8") as f:
-                champ_data = json.load(f)
-                for c in champ_data.get("champions", []):
-                    tags = c.get("tags", [])
-                    name = c.get("name")
-                    if "Support" in tags:
-                        best = "sup"
-                    elif "Marksman" in tags:
-                        best = "bot"
-                    elif "Mage" in tags or "Assassin" in tags:
-                        best = "mid"
-                    elif "Tank" in tags:
-                        best = "top"
-                    elif "Fighter" in tags:
-                        best = "jng"
-                    else:
-                        best = "mid"
-                    champ_roles[name] = best
-        except Exception:
-            pass
+# NOTE: assign_picks_to_roles is defined once at the top of this file.
+# The canonical version returns None for unassigned roles (no phantom champion injection).
 
-    assigned = {}
-    remaining_roles = set(role_keys)
-    for champ in picks:
-        pref = champ_roles.get(champ, "mid")
-        if pref in remaining_roles:
-            assigned[pref] = champ
-            remaining_roles.remove(pref)
-        else:
-            if remaining_roles:
-                fallback = list(remaining_roles)[0]
-                assigned[fallback] = champ
-                remaining_roles.remove(fallback)
-                
-    for r in role_keys:
-        if r not in assigned:
-            col_name = f"{prefix}{r}"
-            assigned[r] = encoders[col_name].classes_[0]
-            
-    return {f"{prefix}{r}": val for r, val in assigned.items()}
 
 @root_router.post("/predict")
 def root_predict_endpoint(payload: SimplePredictPayload, request: Request) -> dict:
@@ -747,10 +736,20 @@ def root_predict_endpoint(payload: SimplePredictPayload, request: Request) -> di
     calibrated_model = request.app.state.calibrated_model
     encoders = request.app.state.encoders
     feature_cols = request.app.state.feature_cols
+    latest_patch = getattr(request.app.state, "latest_patch", encoders["patch"].classes_[-1])
+    neutral_league = getattr(request.app.state, "neutral_league", "LCK")
+    median_enc = getattr(request.app.state, "median_enc", {})
+
+    blue_count = len([p for p in payload.blue_picks if p])
+    red_count  = len([p for p in payload.red_picks  if p])
+
+    # Gate: no prediction without an opposing draft
+    if blue_count == 0 or red_count == 0:
+        return {"blue_win_probability": 0.5}
 
     def team_synergy_score(champs):
         scores = []
-        valid = [c for c in champs if pd.notna(c) and c != ""]
+        valid = [c for c in champs if c and c != _EMPTY and pd.notna(c)]
         for c1, c2 in combinations(valid, 2):
             key = tuple(sorted([c1, c2]))
             if key in pair_map:
@@ -759,7 +758,7 @@ def root_predict_endpoint(payload: SimplePredictPayload, request: Request) -> di
 
     role_cols = [
         "blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup",
-        "red_top", "red_jng", "red_mid", "red_bot", "red_sup"
+        "red_top",  "red_jng",  "red_mid",  "red_bot",  "red_sup"
     ]
 
     blue_role_picks = assign_picks_to_roles(payload.blue_picks, True, encoders)
@@ -769,16 +768,19 @@ def root_predict_endpoint(payload: SimplePredictPayload, request: Request) -> di
     row.update(blue_role_picks)
     row.update(red_role_picks)
 
-    row["patch"] = "16.1"
-    row["league"] = "LCK"
-    row["blue_team"] = encoders["blue_team"].classes_[0]
-    row["red_team"] = encoders["red_team"].classes_[0]
+    # Replace None values (unassigned roles from assign_picks_to_roles) with sentinel
+    for col in role_cols:
+        if row.get(col) is None:
+            row[col] = _EMPTY
+
+    row["patch"] = latest_patch
+    row["league"] = neutral_league
 
     for col in role_cols:
-        row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
+        row[f"{col}_wr"] = global_avg_wr if row[col] == _EMPTY else wr_map.get(row[col], global_avg_wr)
 
     blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
-    red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
+    red_roles  = ["red_top",  "red_jng",  "red_mid",  "red_bot",  "red_sup"]
 
     row["blue_synergy"] = team_synergy_score([row[r] for r in blue_roles])
     row["red_synergy"] = team_synergy_score([row[r] for r in red_roles])
@@ -788,6 +790,8 @@ def root_predict_endpoint(payload: SimplePredictPayload, request: Request) -> di
     row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
 
     def encode_val(encoder_name, val):
+        if val == _EMPTY:
+            return median_enc.get(encoder_name, len(encoders[encoder_name].classes_) // 2)
         le = encoders[encoder_name]
         if val in le.classes_:
             return le.transform([val])[0]
@@ -798,8 +802,8 @@ def root_predict_endpoint(payload: SimplePredictPayload, request: Request) -> di
 
     row["patch_enc"] = encode_val("patch", row["patch"])
     row["league_enc"] = encode_val("league", row["league"])
-    row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
-    row["red_team_enc"] = encode_val("red_team", row["red_team"])
+    row["blue_team_enc"] = len(encoders["blue_team"].classes_) // 2
+    row["red_team_enc"] = len(encoders["red_team"].classes_) // 2
 
     X_test = pd.DataFrame([row])
     X_features = X_test[feature_cols].copy()
@@ -809,9 +813,14 @@ def root_predict_endpoint(payload: SimplePredictPayload, request: Request) -> di
         X_features[c] = X_features[c].astype("category")
 
     probs = calibrated_model.predict_proba(X_features)
-    blue_win_prob = float(probs[0][1])
+    raw_win_prob = float(probs[0][1])
 
-    return {"blue_win_probability": blue_win_prob}
+    # Linear completeness scaling
+    completeness_factor = min(blue_count, red_count) / 5.0
+    blue_win_prob = 0.5 + (raw_win_prob - 0.5) * completeness_factor
+
+    return {"blue_win_probability": round(blue_win_prob, 4)}
+
 
 @root_router.post("/explain")
 def root_explain_endpoint(payload: SimpleExplainPayload, request: Request) -> dict:
