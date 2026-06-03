@@ -23,7 +23,8 @@ This directory houses the FastAPI service, predictive models, explainability str
   - `core/`: Config settings and credentials setup.
   - `tools/`: Extensible agentic tools.
   - `tests/`: End-to-end endpoint tests (`.http`).
-- `data/`: Holds trained LightGBM models (`calibrated_model.pkl`), label encoders (`encoders.pkl`), feature configurations, and historical Parquets (`champ_winrates.parquet`, `champ_synergies.parquet`, `champ_counters.parquet`).
+- `data/`: Holds the active v2 model bundle in `data/models/v2/`, plus historical Parquets used for matchup counters.
+- `data/models/v2/`: Active LightGBM calibrated model (`calibrated_model_v2.pkl`), encoders, feature list, SHAP payload, role/global win-rate maps, global average, and role-qualified synergy pair map.
 - `scripts/`: Data pre-processing, matching, and feature extraction scripts.
 
 ---
@@ -63,5 +64,12 @@ fastapi dev app/main.py
 
 - **`POST /api/v1/predict`**: Evaluates the draft state (10 pick slots, 10 ban slots) and returns the win rate projection percentage for both blue and red teams.
 - **`POST /api/v1/agent`**: A composite endpoint analyzing deep draft features, pre-calculating optimized recommendations, and passing context to the LangGraph/Gemini agent to generate tactical warnings, matchup breakdowns, and role suggestions.
-- **`GET /api/v1/champions/metrics`**: Exposes pre-cached champion win rates and synergy lookup matrix maps.
-- **`GET /api/v1/champions/op`**: Returns mathematical global high-contribution champions based on aggregate SHAP analysis.
+- **`POST /api/v1/predict-options`**: Batch-scores candidate champion-role options using the same v2 feature builder as `/predict`.
+- **`GET /api/v1/champions/metrics`**: Exposes v2 global champion win rates, role-specific win rates, role-qualified synergy maps, and the active model version.
+- **`GET /api/v1/champions/op`**: Returns global and role-specific strength rankings derived from the v2 win-rate maps.
+
+## Active Model Contract
+
+The active v2 model uses exactly 19 features: `patch_enc`, `league_enc`, the ten role win-rate features, `blue_synergy`, `red_synergy`, `blue_team_avg_wr`, `red_team_avg_wr`, `wr_diff`, `synergy_diff`, and `picks_filled`.
+
+Champion inputs are transformed into role-qualified keys such as `Caitlyn_bot` and `Lee Sin_jng`. Role win rates fall back to global champion win rate, then the serialized global average. Missing draft slots use the global average and are counted through `picks_filled`.

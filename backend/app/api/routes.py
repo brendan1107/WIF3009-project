@@ -1,246 +1,30 @@
-import numpy as np
-import pandas as pd
-import shap
+from __future__ import annotations
+
+import json
+import random
+from pathlib import Path
+from typing import Any, Dict, List, Mapping, Optional
+
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
-from typing import Optional, List, Dict
-from itertools import combinations
+
 from app.agents import agent_app
+from app.services.model_features import (
+    ROLE_PART_TO_API,
+    active_role_part,
+    available_champions,
+    build_model_row,
+    predict_blue_win_probability,
+    role_key,
+    role_options_for_champion,
+    role_wr,
+    shap_contributions,
+    slots_from_simple_picks,
+    team_synergy,
+    top_drivers,
+)
 
 router = APIRouter()
-
-
-def get_slot_champion(slots_dict, role_col_part):
-    role_mapping = {
-        "top": "TOP",
-        "jng": "JUNGLE",
-        "mid": "MID",
-        "bot": "BOTTOM",
-        "sup": "SUPPORT"
-    }
-    role_key = role_mapping.get(role_col_part)
-    return slots_dict.get(role_key)
-
-
-def assign_picks_to_roles(picks: List[str], is_blue: bool, encoders) -> dict:
-    role_keys = ["top", "jng", "mid", "bot", "sup"]
-    prefix = "blue_" if is_blue else "red_"
-    
-    import json
-    import os
-    frontend_json_path = r"c:\Dev\group-projects\WIF3009-project\frontend\src\assets\data\champions.json"
-    champ_roles = {}
-    if os.path.exists(frontend_json_path):
-        try:
-            with open(frontend_json_path, "r", encoding="utf-8") as f:
-                champ_data = json.load(f)
-                for c in champ_data.get("champions", []):
-                    tags = c.get("tags", [])
-                    name = c.get("name")
-                    if "Support" in tags:
-                        best = "sup"
-                    elif "Marksman" in tags:
-                        best = "bot"
-                    elif "Mage" in tags or "Assassin" in tags:
-                        best = "mid"
-                    elif "Tank" in tags:
-                        best = "top"
-                    elif "Fighter" in tags:
-                        best = "jng"
-                    else:
-                        best = "mid"
-                    champ_roles[name] = best
-        except Exception:
-            pass
-
-    assigned = {}
-    remaining_roles = set(role_keys)
-    for champ in picks:
-        pref = champ_roles.get(champ, "mid")
-        if pref in remaining_roles:
-            assigned[pref] = champ
-            remaining_roles.remove(pref)
-        else:
-            if remaining_roles:
-                fallback = list(remaining_roles)[0]
-                assigned[fallback] = champ
-                remaining_roles.remove(fallback)
-                
-    for r in role_keys:
-        if r not in assigned:
-            col_name = f"{prefix}{r}"
-            assigned[r] = encoders[col_name].classes_[0]
-            
-    return {f"{prefix}{r}": val for r, val in assigned.items()}
-
-
-def simulate_win_rate_locally(
-    blue_picks, red_picks, proposed_champion, team,
-    wr_map, pair_map, global_avg_wr, calibrated_model, encoders, feature_cols
-) -> float:
-    sim_blue = blue_picks.copy()
-    sim_red = red_picks.copy()
-    if team == "blue":
-        sim_blue.append(proposed_champion)
-    else:
-        sim_red.append(proposed_champion)
-
-    blue_role_picks = assign_picks_to_roles(sim_blue, True, encoders)
-    red_role_picks = assign_picks_to_roles(sim_red, False, encoders)
-
-    row = {}
-    row.update(blue_role_picks)
-    row.update(red_role_picks)
-
-    row["patch"] = "16.1"
-    row["league"] = "LCK"
-    row["blue_team"] = encoders["blue_team"].classes_[0]
-    row["red_team"] = encoders["red_team"].classes_[0]
-
-    role_cols = [
-        "blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup",
-        "red_top", "red_jng", "red_mid", "red_bot", "red_sup"
-    ]
-
-    for col in role_cols:
-        row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
-
-    blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
-    red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
-
-    def team_synergy_score(champs):
-        scores = []
-        valid = [c for c in champs if pd.notna(c) and c != ""]
-        for c1, c2 in combinations(valid, 2):
-            key = tuple(sorted([c1, c2]))
-            if key in pair_map:
-                scores.append(pair_map[key])
-        return np.mean(scores) if scores else 0.5
-
-    row["blue_synergy"] = team_synergy_score([row[r] for r in blue_roles])
-    row["red_synergy"] = team_synergy_score([row[r] for r in red_roles])
-    row["blue_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in blue_roles])
-    row["red_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in red_roles])
-    row["wr_diff"] = row["blue_team_avg_wr"] - row["red_team_avg_wr"]
-    row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
-
-    def encode_val(encoder_name, val):
-        le = encoders[encoder_name]
-        if val in le.classes_:
-            return le.transform([val])[0]
-        return le.transform([le.classes_[0]])[0]
-
-    for col in role_cols:
-        row[f"{col}_enc"] = encode_val(col, row[col])
-
-    row["patch_enc"] = encode_val("patch", row["patch"])
-    row["league_enc"] = encode_val("league", row["league"])
-    row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
-    row["red_team_enc"] = encode_val("red_team", row["red_team"])
-
-    X_test = pd.DataFrame([row])
-    X_features = X_test[feature_cols].copy()
-
-    cat_cols = [c + "_enc" for c in role_cols] + ["patch_enc", "league_enc"]
-    for c in cat_cols:
-        X_features[c] = X_features[c].astype("category")
-
-    probs = calibrated_model.predict_proba(X_features)
-    return float(probs[0][1])
-
-
-def calculate_ban_recommendations(
-    blue_picks, red_picks, banned_champs, active_team, wr_map, pair_map, global_avg_wr,
-    calibrated_model=None, encoders=None, feature_cols=None
-):
-    opp_picks = red_picks if active_team == "blue" else blue_picks
-    all_champions = list(wr_map.keys())
-    unavailable = set(blue_picks + red_picks + banned_champs)
-    candidates = [c for c in all_champions if c not in unavailable]
-    
-    threat_scores = []
-    for c in candidates:
-        opp_synergies = []
-        for opp in opp_picks:
-            key = tuple(sorted([c, opp]))
-            if key in pair_map:
-                opp_synergies.append(pair_map[key])
-        avg_opp_synergy = np.mean(opp_synergies) if opp_synergies else 0.5
-        base_wr = wr_map.get(c, global_avg_wr)
-        threat = 0.7 * avg_opp_synergy + 0.3 * base_wr
-        threat_scores.append((c, threat, avg_opp_synergy))
-        
-    threat_scores.sort(key=lambda x: x[1], reverse=True)
-    
-    results = []
-    opp_team = "red" if active_team == "blue" else "blue"
-    for item in threat_scores[:3]:
-        champ = item[0]
-        sim_prob = 0.5
-        if calibrated_model is not None:
-            try:
-                sim_prob = simulate_win_rate_locally(
-                    blue_picks, red_picks, champ, opp_team,
-                    wr_map, pair_map, global_avg_wr, calibrated_model, encoders, feature_cols
-                )
-            except Exception as e:
-                print(f"Error simulating ban: {e}")
-        
-        results.append({
-            "champion": champ,
-            "threat_score": float(item[1]),
-            "opp_synergy": float(item[2]),
-            "simulated_win_probability_if_picked_by_opponent": float(sim_prob)
-        })
-    return results
-
-
-def calculate_pick_recommendations(
-    blue_picks, red_picks, banned_champs, active_team, wr_map, pair_map, global_avg_wr,
-    calibrated_model=None, encoders=None, feature_cols=None
-):
-    ally_picks = blue_picks if active_team == "blue" else red_picks
-    all_champions = list(wr_map.keys())
-    unavailable = set(blue_picks + red_picks + banned_champs)
-    candidates = [c for c in all_champions if c not in unavailable]
-    
-    pick_scores = []
-    for c in candidates:
-        ally_synergies = []
-        for ally in ally_picks:
-            key = tuple(sorted([c, ally]))
-            if key in pair_map:
-                ally_synergies.append(pair_map[key])
-        avg_ally_synergy = np.mean(ally_synergies) if ally_synergies else 0.5
-        base_wr = wr_map.get(c, global_avg_wr)
-        score = 0.7 * avg_ally_synergy + 0.3 * base_wr
-        pick_scores.append((c, score, avg_ally_synergy))
-        
-    pick_scores.sort(key=lambda x: x[1], reverse=True)
-    
-    results = []
-    for item in pick_scores[:3]:
-        champ = item[0]
-        sim_prob = 0.5
-        if calibrated_model is not None:
-            try:
-                sim_prob = simulate_win_rate_locally(
-                    blue_picks, red_picks, champ, active_team,
-                    wr_map, pair_map, global_avg_wr, calibrated_model, encoders, feature_cols
-                )
-            except Exception as e:
-                print(f"Error simulating pick: {e}")
-        
-        results.append({
-            "champion": champ,
-            "score": float(item[1]),
-            "ally_synergy": float(item[2]),
-            "simulated_win_probability": float(sim_prob)
-        })
-    return results
-
-
-
 
 
 class SlotPayload(BaseModel):
@@ -272,78 +56,6 @@ class PredictOptionsPayload(BaseModel):
     options: List[CandidateOptionPayload]
 
 
-ROLE_COLS = [
-    "blue_top",
-    "blue_jng",
-    "blue_mid",
-    "blue_bot",
-    "blue_sup",
-    "red_top",
-    "red_jng",
-    "red_mid",
-    "red_bot",
-    "red_sup",
-]
-
-
-def build_model_row(blue_slots: Dict[str, str], red_slots: Dict[str, str], request: Request) -> dict:
-    wr_map = request.app.state.wr_map
-    global_avg_wr = request.app.state.global_avg_wr
-    pair_map = request.app.state.pair_map
-    encoders = request.app.state.encoders
-
-    def team_synergy_score(champs):
-        scores = []
-        valid = [c for c in champs if pd.notna(c) and c != ""]
-        for c1, c2 in combinations(valid, 2):
-            key = tuple(sorted([c1, c2]))
-            if key in pair_map:
-                scores.append(pair_map[key])
-        return np.mean(scores) if scores else 0.5
-
-    def encode_val(encoder_name, val):
-        le = encoders[encoder_name]
-        if val in le.classes_:
-            return le.transform([val])[0]
-        return le.transform([le.classes_[0]])[0]
-
-    row = {}
-    for col in ROLE_COLS:
-        role_part = col.split("_")[1]
-        if col.startswith("blue"):
-            row[col] = get_slot_champion(blue_slots, role_part) or encoders[col].classes_[0]
-        else:
-            row[col] = get_slot_champion(red_slots, role_part) or encoders[col].classes_[0]
-
-    row["patch"] = "16.1"
-    row["league"] = "LCK"
-    row["blue_team"] = encoders["blue_team"].classes_[0]
-    row["red_team"] = encoders["red_team"].classes_[0]
-
-    for col in ROLE_COLS:
-        row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
-
-    blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
-    red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
-
-    row["blue_synergy"] = team_synergy_score([row[r] for r in blue_roles])
-    row["red_synergy"] = team_synergy_score([row[r] for r in red_roles])
-    row["blue_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in blue_roles])
-    row["red_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in red_roles])
-    row["wr_diff"] = row["blue_team_avg_wr"] - row["red_team_avg_wr"]
-    row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
-
-    for col in ROLE_COLS:
-        row[f"{col}_enc"] = encode_val(col, row[col])
-
-    row["patch_enc"] = encode_val("patch", row["patch"])
-    row["league_enc"] = encode_val("league", row["league"])
-    row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
-    row["red_team_enc"] = encode_val("red_team", row["red_team"])
-
-    return row
-
-
 class TelemetryDriver(BaseModel):
     feature: str
     value: float
@@ -351,19 +63,273 @@ class TelemetryDriver(BaseModel):
 
 
 class AgentRequest(BaseModel):
-    # New direct telemetry input format
     expected_base_win_prob: Optional[float] = None
     top_drivers: Optional[List[TelemetryDriver]] = None
-
-    # Legacy format (now structured)
     draft_state: Optional[DraftPayload] = None
     user_question: Optional[str] = None
     interaction_id: Optional[str] = None
 
 
+class SimplePredictPayload(BaseModel):
+    blue_picks: List[str]
+    red_picks: List[str]
+    bans: List[str]
+
+
+class SimpleExplainPayload(BaseModel):
+    blue_picks: List[str]
+    red_picks: List[str]
+
+
+def project_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
+def champion_id_map() -> Dict[str, str]:
+    champions_path = project_root() / "frontend" / "src" / "assets" / "data" / "champions.json"
+    if not champions_path.exists():
+        return {}
+
+    try:
+        with champions_path.open("r", encoding="utf-8") as file:
+            data = json.load(file)
+        return {champion["id"]: champion["name"] for champion in data.get("champions", [])}
+    except Exception as exc:
+        print(f"Error reading champions.json: {exc}")
+        return {}
+
+
+def resolve_name(value: Optional[str], id_to_name: Mapping[str, str]) -> Optional[str]:
+    if not value:
+        return None
+    return id_to_name.get(value, value)
+
+
+def resolve_draft(payload: DraftPayload) -> Dict[str, Any]:
+    id_to_name = champion_id_map()
+    blue_slots = {
+        slot.role: resolve_name(slot.championId, id_to_name)
+        for slot in payload.bluePicks
+        if slot.championId
+    }
+    red_slots = {
+        slot.role: resolve_name(slot.championId, id_to_name)
+        for slot in payload.redPicks
+        if slot.championId
+    }
+    return {
+        "blue_slots": blue_slots,
+        "red_slots": red_slots,
+        "blue_picks": [champion for champion in blue_slots.values() if champion],
+        "red_picks": [champion for champion in red_slots.values() if champion],
+        "blue_bans": [resolve_name(ban, id_to_name) for ban in payload.blueBans if ban],
+        "red_bans": [resolve_name(ban, id_to_name) for ban in payload.redBans if ban],
+    }
+
+
+def model_state(request: Request):
+    return request.app.state
+
+
+def score_blue_probability(request: Request, blue_slots: Mapping[str, str], red_slots: Mapping[str, str]) -> float:
+    state = model_state(request)
+    row = build_model_row(blue_slots, red_slots, state)
+    return predict_blue_win_probability(state.calibrated_model, [row], state.feature_cols)[0]
+
+
+def role_synergy_for_candidate(
+    candidate: str,
+    role_part: str,
+    ally_slots: Mapping[str, str],
+    pair_map: Mapping[tuple[str, str], float],
+) -> float:
+    candidate_key = role_key(candidate, role_part)
+    ally_keys = []
+    for api_role, champion in ally_slots.items():
+        ally_part = active_role_part(api_role)
+        ally_keys.append(role_key(champion, ally_part))
+    return team_synergy([candidate_key, *ally_keys], pair_map)
+
+
+def simulate_candidate(
+    request: Request,
+    blue_slots: Mapping[str, str],
+    red_slots: Mapping[str, str],
+    champion: str,
+    team: str,
+    role_part: str,
+) -> float:
+    next_blue_slots = dict(blue_slots)
+    next_red_slots = dict(red_slots)
+    api_role = ROLE_PART_TO_API[role_part]
+    if team == "blue":
+        next_blue_slots[api_role] = champion
+    else:
+        next_red_slots[api_role] = champion
+    return score_blue_probability(request, next_blue_slots, next_red_slots)
+
+
+def calculate_pick_recommendations(
+    request: Request,
+    blue_slots: Mapping[str, str],
+    red_slots: Mapping[str, str],
+    banned_champs: List[str],
+    active_team: str,
+    active_role: Optional[str],
+) -> List[Dict[str, Any]]:
+    state = model_state(request)
+    role_part = active_role_part(active_role)
+    ally_slots = blue_slots if active_team == "blue" else red_slots
+    unavailable = set(blue_slots.values()) | set(red_slots.values()) | set(banned_champs)
+
+    candidates = [
+        champion
+        for champion in available_champions(state)
+        if champion not in unavailable
+    ]
+
+    scored = []
+    for champion in candidates:
+        champion_role_wr = role_wr(
+            champion,
+            role_part,
+            state.champ_role_wr_map,
+            state.wr_map,
+            state.global_avg_wr,
+        )
+        ally_synergy = role_synergy_for_candidate(champion, role_part, ally_slots, state.pair_map)
+        score = 0.6 * champion_role_wr + 0.4 * ally_synergy
+        scored.append((champion, score, champion_role_wr, ally_synergy))
+
+    scored.sort(key=lambda item: item[1], reverse=True)
+
+    recommendations = []
+    for champion, score, champion_role_wr, ally_synergy in scored[:3]:
+        try:
+            blue_prob = simulate_candidate(
+                request,
+                blue_slots,
+                red_slots,
+                champion,
+                active_team,
+                role_part,
+            )
+            perspective_prob = blue_prob if active_team == "blue" else 1.0 - blue_prob
+        except Exception as exc:
+            print(f"Error simulating pick recommendation for {champion}: {exc}")
+            perspective_prob = 0.5
+
+        recommendations.append(
+            {
+                "champion": champion,
+                "role": ROLE_PART_TO_API[role_part],
+                "score": float(score),
+                "role_win_rate": float(champion_role_wr),
+                "ally_synergy": float(ally_synergy),
+                "simulated_win_probability": float(perspective_prob),
+            }
+        )
+
+    return recommendations
+
+
+def calculate_ban_recommendations(
+    request: Request,
+    blue_slots: Mapping[str, str],
+    red_slots: Mapping[str, str],
+    banned_champs: List[str],
+    active_team: str,
+) -> List[Dict[str, Any]]:
+    state = model_state(request)
+    opponent_team = "red" if active_team == "blue" else "blue"
+    opponent_slots = red_slots if active_team == "blue" else blue_slots
+    unavailable = set(blue_slots.values()) | set(red_slots.values()) | set(banned_champs)
+
+    scored = []
+    for champion in available_champions(state):
+        if champion in unavailable:
+            continue
+        role_options = role_options_for_champion(champion, state.champ_role_wr_map)
+        role_part, champion_role_wr = role_options[0] if role_options else ("mid", state.wr_map.get(champion, state.global_avg_wr))
+        opponent_synergy = role_synergy_for_candidate(champion, role_part, opponent_slots, state.pair_map)
+        threat_score = 0.6 * float(champion_role_wr) + 0.4 * opponent_synergy
+        scored.append((champion, role_part, threat_score, float(champion_role_wr), opponent_synergy))
+
+    scored.sort(key=lambda item: item[2], reverse=True)
+
+    recommendations = []
+    for champion, role_part, threat_score, champion_role_wr, opponent_synergy in scored[:3]:
+        try:
+            blue_prob = simulate_candidate(
+                request,
+                blue_slots,
+                red_slots,
+                champion,
+                opponent_team,
+                role_part,
+            )
+            opponent_prob = 1.0 - blue_prob if opponent_team == "red" else blue_prob
+        except Exception as exc:
+            print(f"Error simulating ban recommendation for {champion}: {exc}")
+            opponent_prob = 0.5
+
+        recommendations.append(
+            {
+                "champion": champion,
+                "role": ROLE_PART_TO_API[role_part],
+                "threat_score": float(threat_score),
+                "role_win_rate": float(champion_role_wr),
+                "opp_synergy": float(opponent_synergy),
+                "simulated_win_probability_if_picked_by_opponent": float(opponent_prob),
+            }
+        )
+
+    return recommendations
+
+
+def matchup_counters(request: Request, blue_slots: Mapping[str, str], red_slots: Mapping[str, str]) -> List[Dict[str, Any]]:
+    counter_map = getattr(request.app.state, "counter_map", {})
+    role_mapping_to_parquet = {
+        "TOP": "TOP",
+        "JUNGLE": "JNG",
+        "MID": "MID",
+        "BOTTOM": "BOT",
+        "SUPPORT": "SUP",
+    }
+
+    results = []
+    for api_role, parquet_role in role_mapping_to_parquet.items():
+        blue_champion = blue_slots.get(api_role)
+        red_champion = red_slots.get(api_role)
+        if not blue_champion or not red_champion:
+            continue
+        lookup_key = (blue_champion, red_champion, parquet_role)
+        if lookup_key not in counter_map:
+            continue
+        match_info = counter_map[lookup_key]
+        results.append(
+            {
+                "role": api_role,
+                "blue_champion": blue_champion,
+                "red_champion": red_champion,
+                "blue_head_to_head_winrate": match_info["winrate"],
+                "matches": match_info["matches"],
+            }
+        )
+    return results
+
+
+def explain_row(request: Request, row: Mapping[str, Any]) -> tuple[float, List[Dict[str, float]]]:
+    state = model_state(request)
+    blue_prob = predict_blue_win_probability(state.calibrated_model, [row], state.feature_cols)[0]
+    if getattr(state, "shap_explainer", None) is None:
+        return blue_prob, []
+    contributions = shap_contributions(state.shap_explainer, row, state.feature_cols)
+    return blue_prob, top_drivers(contributions, row)
+
+
 @router.post("/agent")
 def agent_endpoint(req: AgentRequest, request: Request) -> dict:
-    # 1. Direct Telemetry Input Path
     if req.expected_base_win_prob is not None and req.top_drivers is not None:
         initial_state = {
             "expected_base_win_prob": req.expected_base_win_prob,
@@ -373,397 +339,101 @@ def agent_endpoint(req: AgentRequest, request: Request) -> dict:
         final_state = agent_app.invoke(initial_state)
         return {
             "draft_warning": final_state.get("draft_warning", "No details available."),
-            "recommendations": final_state.get("recommendations", "Review drivers panel.")
-        }
-
-    # 2. Legacy/Local Calibrated Model Path (Zero Load-in-Route Execution)
-    if req.draft_state is not None:
-        # Resolve champion IDs to display names from the frontend champions.json
-        import json
-        import os
-        frontend_json_path = r"c:\Dev\group-projects\WIF3009-project\frontend\src\assets\data\champions.json"
-        id_to_name = {}
-        if os.path.exists(frontend_json_path):
-            try:
-                with open(frontend_json_path, "r", encoding="utf-8") as f:
-                    champ_data = json.load(f)
-                    id_to_name = {c["id"]: c["name"] for c in champ_data.get("champions", [])}
-            except Exception as e:
-                print(f"Error reading frontend champions.json: {e}")
-
-        # Mutate the draft_state to use resolved display names
-        for s in req.draft_state.bluePicks:
-            if s.championId and s.championId in id_to_name:
-                s.championId = id_to_name[s.championId]
-        for s in req.draft_state.redPicks:
-            if s.championId and s.championId in id_to_name:
-                s.championId = id_to_name[s.championId]
-        req.draft_state.blueBans = [id_to_name.get(b, b) if b else "" for b in req.draft_state.blueBans]
-        req.draft_state.redBans = [id_to_name.get(b, b) if b else "" for b in req.draft_state.redBans]
-
-        # Extract pre-loaded caches from app state
-        wr_map = request.app.state.wr_map
-        global_avg_wr = request.app.state.global_avg_wr
-        pair_map = request.app.state.pair_map
-        
-        # Extract pick/ban lists as decoded/resolved strings
-        blue_picks = [s.championId for s in req.draft_state.bluePicks if s.championId]
-        red_picks = [s.championId for s in req.draft_state.redPicks if s.championId]
-        blue_bans = [b for b in req.draft_state.blueBans if b]
-        red_bans = [b for b in req.draft_state.redBans if b]
-        
-        # Check if draft is completely empty (Step 0: no picks and no bans)
-        if not blue_picks and not red_picks and not blue_bans and not red_bans:
-            initial_recommended_bans = calculate_ban_recommendations(
-                [], [], [], req.draft_state.activeTeam,
-                wr_map, pair_map, global_avg_wr,
-                request.app.state.calibrated_model, request.app.state.encoders, request.app.state.feature_cols
-            )
-            initial_state = {
-                "expected_base_win_prob": 0.5,
-                "top_drivers": [],
-                "explanation": "",
-                "active_team": req.draft_state.activeTeam,
-                "active_action": req.draft_state.activeAction,
-                "active_role": req.draft_state.activeRole,
-                "blue_picks": [],
-                "red_picks": [],
-                "blue_bans": [],
-                "red_bans": [],
-                "recommended_bans": initial_recommended_bans,
-                "recommended_picks": [],
-                "matchup_counters": []
-            }
-            final_state = agent_app.invoke(initial_state)
-            return {
-                "draft_warning": final_state.get("draft_warning", "Establish priority bans to disrupt opponent comfort picks."),
-                "recommendations": final_state.get("recommendations", "Lock recommended ban targets to secure structural drafting safety."),
-                "expected_base_win_prob": 0.5,
-                "top_drivers": []
-            }
-
-        blue_selected = len(blue_picks) > 0
-        red_selected = len(red_picks) > 0
-
-        # Construct feature row if there are picks
-        if blue_selected or red_selected:
-            calibrated_model = request.app.state.calibrated_model
-            encoders = request.app.state.encoders
-            feature_cols = request.app.state.feature_cols
-            shap_explainer = request.app.state.shap_explainer
-
-            # Local helper for synergy
-            def team_synergy_score(champs):
-                scores = []
-                valid = [c for c in champs if pd.notna(c) and c != ""]
-                for c1, c2 in combinations(valid, 2):
-                    key = tuple(sorted([c1, c2]))
-                    if key in pair_map:
-                        scores.append(pair_map[key])
-                return np.mean(scores) if scores else 0.5
-
-            role_cols = [
-                "blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup",
-                "red_top", "red_jng", "red_mid", "red_bot", "red_sup"
-            ]
-
-            blue_slots = {s.role: s.championId for s in req.draft_state.bluePicks if s.championId}
-            red_slots = {s.role: s.championId for s in req.draft_state.redPicks if s.championId}
-
-            row = {}
-            for col in role_cols:
-                role_part = col.split("_")[1]
-                if col.startswith("blue"):
-                    row[col] = get_slot_champion(blue_slots, role_part) or encoders[col].classes_[0]
-                else:
-                    row[col] = get_slot_champion(red_slots, role_part) or encoders[col].classes_[0]
-
-            row["patch"] = "16.1"
-            row["league"] = "LCK"
-            row["blue_team"] = encoders["blue_team"].classes_[0]
-            row["red_team"] = encoders["red_team"].classes_[0]
-
-            for col in role_cols:
-                row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
-
-            blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
-            red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
-
-            row["blue_synergy"] = team_synergy_score([row[r] for r in blue_roles])
-            row["red_synergy"] = team_synergy_score([row[r] for r in red_roles])
-            row["blue_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in blue_roles])
-            row["red_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in red_roles])
-            row["wr_diff"] = row["blue_team_avg_wr"] - row["red_team_avg_wr"]
-            row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
-
-            def encode_val(encoder_name, val):
-                le = encoders[encoder_name]
-                if val in le.classes_:
-                    return le.transform([val])[0]
-                return le.transform([le.classes_[0]])[0]
-
-            for col in role_cols:
-                row[f"{col}_enc"] = encode_val(col, row[col])
-
-            row["patch_enc"] = encode_val("patch", row["patch"])
-            row["league_enc"] = encode_val("league", row["league"])
-            row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
-            row["red_team_enc"] = encode_val("red_team", row["red_team"])
-
-            X_test = pd.DataFrame([row])
-            X_features = X_test[feature_cols].copy()
-
-            cat_cols = [c + "_enc" for c in role_cols] + ["patch_enc", "league_enc"]
-            for c in cat_cols:
-                X_features[c] = X_features[c].astype("category")
-
-            probs = calibrated_model.predict_proba(X_features)
-            blue_win_prob = float(probs[0][1])
-
-            shap_values = shap_explainer(X_features)
-            contributions = {}
-            for feat, val in zip(feature_cols, shap_values.values[0]):
-                contributions[feat] = float(val)
-
-            top_drivers = []
-            for feature, impact in contributions.items():
-                top_drivers.append(
-                    {"feature": feature, "value": 1.0, "impact_on_win_prob": impact}
-                )
-            top_drivers = sorted(
-                top_drivers, key=lambda x: abs(x["impact_on_win_prob"]), reverse=True
-            )[:5]
-        else:
-            blue_win_prob = 0.5
-            top_drivers = []
-
-        # Programmatic recommendations
-        recommended_bans = []
-        recommended_picks = []
-        
-        banned_champs = blue_bans + red_bans
-        
-        if req.draft_state.activeAction == "ban":
-            recommended_bans = calculate_ban_recommendations(
-                blue_picks, red_picks, banned_champs,
-                req.draft_state.activeTeam, wr_map, pair_map, global_avg_wr,
-                request.app.state.calibrated_model, request.app.state.encoders, request.app.state.feature_cols
-            )
-        elif req.draft_state.activeAction == "pick":
-            recommended_picks = calculate_pick_recommendations(
-                blue_picks, red_picks, banned_champs,
-                req.draft_state.activeTeam, wr_map, pair_map, global_avg_wr,
-                request.app.state.calibrated_model, request.app.state.encoders, request.app.state.feature_cols
-            )
-
-        # Calculate specific matchups counter winrates
-        matchup_counters = []
-        if blue_selected or red_selected:
-            blue_slots_lookup = {s.role: s.championId for s in req.draft_state.bluePicks if s.championId}
-            red_slots_lookup = {s.role: s.championId for s in req.draft_state.redPicks if s.championId}
-            roles_to_check = ["TOP", "JUNGLE", "MID", "BOTTOM", "SUPPORT"]
-            role_mapping_to_parquet = {
-                "TOP": "TOP",
-                "JUNGLE": "JNG",
-                "MID": "MID",
-                "BOTTOM": "BOT",
-                "SUPPORT": "SUP"
-            }
-            counter_map = request.app.state.counter_map
-            for r in roles_to_check:
-                b_champ = blue_slots_lookup.get(r)
-                r_champ = red_slots_lookup.get(r)
-                if b_champ and r_champ:
-                    parquet_role = role_mapping_to_parquet.get(r, r)
-                    lookup_key = (b_champ, r_champ, parquet_role)
-                    if lookup_key in counter_map:
-                        match_info = counter_map[lookup_key]
-                        matchup_counters.append({
-                            "role": r,
-                            "blue_champion": b_champ,
-                            "red_champion": r_champ,
-                            "blue_head_to_head_winrate": match_info["winrate"],
-                            "matches": match_info["matches"]
-                        })
-
-        # Call LangGraph Node with rich draft context
-        initial_state = {
-            "expected_base_win_prob": blue_win_prob,
-            "top_drivers": top_drivers,
-            "explanation": "",
-            "active_team": req.draft_state.activeTeam,
-            "active_action": req.draft_state.activeAction,
-            "active_role": req.draft_state.activeRole,
-            "blue_picks": blue_picks,
-            "red_picks": red_picks,
-            "blue_bans": blue_bans,
-            "red_bans": red_bans,
-            "recommended_bans": recommended_bans,
-            "recommended_picks": recommended_picks,
-            "matchup_counters": matchup_counters
-        }
-        final_state = agent_app.invoke(initial_state)
-        return {
-            "draft_warning": final_state.get("draft_warning", ""),
-            "recommendations": final_state.get("recommendations", ""),
+            "recommendations": final_state.get("recommendations", "Review drivers panel."),
             "counter_analysis": final_state.get("counter_analysis", ""),
-            "expected_base_win_prob": blue_win_prob,
-            "top_drivers": top_drivers,
         }
 
-    return {
-        "error": "Invalid request format. Must provide either telemetry or draft_state."
+    if req.draft_state is None:
+        return {"error": "Invalid request format. Must provide either telemetry or draft_state."}
+
+    resolved = resolve_draft(req.draft_state)
+    blue_slots = resolved["blue_slots"]
+    red_slots = resolved["red_slots"]
+    blue_picks = resolved["blue_picks"]
+    red_picks = resolved["red_picks"]
+    blue_bans = resolved["blue_bans"]
+    red_bans = resolved["red_bans"]
+    banned_champs = blue_bans + red_bans
+
+    if blue_picks or red_picks:
+        row = build_model_row(blue_slots, red_slots, model_state(request))
+        blue_win_prob, drivers = explain_row(request, row)
+    else:
+        blue_win_prob = 0.5
+        drivers = []
+
+    recommended_bans = []
+    recommended_picks = []
+    if req.draft_state.activeAction == "ban" or not (blue_picks or red_picks):
+        recommended_bans = calculate_ban_recommendations(
+            request,
+            blue_slots,
+            red_slots,
+            banned_champs,
+            req.draft_state.activeTeam,
+        )
+    elif req.draft_state.activeAction == "pick":
+        recommended_picks = calculate_pick_recommendations(
+            request,
+            blue_slots,
+            red_slots,
+            banned_champs,
+            req.draft_state.activeTeam,
+            req.draft_state.activeRole,
+        )
+
+    initial_state = {
+        "expected_base_win_prob": blue_win_prob,
+        "top_drivers": drivers,
+        "explanation": "",
+        "active_team": req.draft_state.activeTeam,
+        "active_action": req.draft_state.activeAction,
+        "active_role": req.draft_state.activeRole or "",
+        "blue_picks": blue_picks,
+        "red_picks": red_picks,
+        "blue_bans": blue_bans,
+        "red_bans": red_bans,
+        "recommended_bans": recommended_bans,
+        "recommended_picks": recommended_picks,
+        "matchup_counters": matchup_counters(request, blue_slots, red_slots),
     }
-
-
-# Duplicated definitions moved to top of file
+    final_state = agent_app.invoke(initial_state)
+    return {
+        "draft_warning": final_state.get("draft_warning", ""),
+        "recommendations": final_state.get("recommendations", ""),
+        "counter_analysis": final_state.get("counter_analysis", ""),
+        "expected_base_win_prob": blue_win_prob,
+        "top_drivers": drivers,
+    }
 
 
 @router.post("/predict")
 def predict_endpoint(payload: DraftPayload, request: Request) -> dict:
-    """Fast, zero-load local inference route for real-time draft prediction."""
-    # Resolve champion IDs to display names from the frontend champions.json
-    import json
-    import os
-    frontend_json_path = r"c:\Dev\group-projects\WIF3009-project\frontend\src\assets\data\champions.json"
-    id_to_name = {}
-    if os.path.exists(frontend_json_path):
-        try:
-            with open(frontend_json_path, "r", encoding="utf-8") as f:
-                champ_data = json.load(f)
-                id_to_name = {c["id"]: c["name"] for c in champ_data.get("champions", [])}
-        except Exception as e:
-            print(f"Error reading frontend champions.json: {e}")
+    resolved = resolve_draft(payload)
+    blue_slots = resolved["blue_slots"]
+    red_slots = resolved["red_slots"]
 
-    # Mutate the payload to use resolved display names
-    for s in payload.bluePicks:
-        if s.championId and s.championId in id_to_name:
-            s.championId = id_to_name[s.championId]
-    for s in payload.redPicks:
-        if s.championId and s.championId in id_to_name:
-            s.championId = id_to_name[s.championId]
-    payload.blueBans = [id_to_name.get(b, b) if b else "" for b in payload.blueBans]
-    payload.redBans = [id_to_name.get(b, b) if b else "" for b in payload.redBans]
-
-    # Check if draft is empty (initial state)
-    blue_selected = any(s.championId for s in payload.bluePicks if s.championId)
-    red_selected = any(s.championId for s in payload.redPicks if s.championId)
-    if not blue_selected and not red_selected:
+    if not blue_slots and not red_slots:
         return {"blueWinRate": 50.0, "redWinRate": 50.0}
 
-    # Extract pre-loaded caches from app state
-    wr_map = request.app.state.wr_map
-    global_avg_wr = request.app.state.global_avg_wr
-    pair_map = request.app.state.pair_map
-    calibrated_model = request.app.state.calibrated_model
-    encoders = request.app.state.encoders
-    feature_cols = request.app.state.feature_cols
-
-    def team_synergy_score(champs):
-        scores = []
-        valid = [c for c in champs if pd.notna(c) and c != ""]
-        for c1, c2 in combinations(valid, 2):
-            key = tuple(sorted([c1, c2]))
-            if key in pair_map:
-                scores.append(pair_map[key])
-        return np.mean(scores) if scores else 0.5
-
-    role_cols = [
-        "blue_top",
-        "blue_jng",
-        "blue_mid",
-        "blue_bot",
-        "blue_sup",
-        "red_top",
-        "red_jng",
-        "red_mid",
-        "red_bot",
-        "red_sup",
-    ]
-
-    # Map slot list to roles
-    blue_slots = {s.role: s.championId for s in payload.bluePicks if s.championId}
-    red_slots = {s.role: s.championId for s in payload.redPicks if s.championId}
-
-    row = {}
-    # Use encoder default first class as a safe fallback if champion not yet selected
-    for col in role_cols:
-        role_part = col.split("_")[1]
-        if col.startswith("blue"):
-            row[col] = get_slot_champion(blue_slots, role_part) or encoders[col].classes_[0]
-        else:
-            row[col] = get_slot_champion(red_slots, role_part) or encoders[col].classes_[0]
-
-    row["patch"] = "16.1"
-    row["league"] = "LCK"
-    row["blue_team"] = encoders["blue_team"].classes_[0]
-    row["red_team"] = encoders["red_team"].classes_[0]
-
-    # Populate features
-    for col in role_cols:
-        row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
-
-    blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
-    red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
-
-    row["blue_synergy"] = team_synergy_score([row[r] for r in blue_roles])
-    row["red_synergy"] = team_synergy_score([row[r] for r in red_roles])
-    row["blue_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in blue_roles])
-    row["red_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in red_roles])
-    row["wr_diff"] = row["blue_team_avg_wr"] - row["red_team_avg_wr"]
-    row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
-
-    def encode_val(encoder_name, val):
-        le = encoders[encoder_name]
-        if val in le.classes_:
-            return le.transform([val])[0]
-        return le.transform([le.classes_[0]])[0]
-
-    for col in role_cols:
-        row[f"{col}_enc"] = encode_val(col, row[col])
-
-    row["patch_enc"] = encode_val("patch", row["patch"])
-    row["league_enc"] = encode_val("league", row["league"])
-    row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
-    row["red_team_enc"] = encode_val("red_team", row["red_team"])
-
-    # Build DataFrame
-    X_test = pd.DataFrame([row])
-    X_features = X_test[feature_cols].copy()
-
-    # Cast categoricals
-    cat_cols = [c + "_enc" for c in role_cols] + ["patch_enc", "league_enc"]
-    for c in cat_cols:
-        X_features[c] = X_features[c].astype("category")
-
-    # Inference
-    probs = calibrated_model.predict_proba(X_features)
-    blue_win_rate = float(probs[0][1]) * 100
-
+    blue_win_rate = score_blue_probability(request, blue_slots, red_slots) * 100.0
     return {"blueWinRate": blue_win_rate, "redWinRate": 100.0 - blue_win_rate}
 
 
 @router.post("/predict-options")
 def predict_options_endpoint(payload: PredictOptionsPayload, request: Request) -> dict:
-    """Batch score candidate champion-role options from the active team's perspective."""
     if not payload.options:
         return {"optionWinRates": {}}
 
-    base_blue_slots = {
-        s.role: s.championId
-        for s in payload.draftState.bluePicks
-        if s.championId
-    }
-    base_red_slots = {
-        s.role: s.championId
-        for s in payload.draftState.redPicks
-        if s.championId
-    }
+    resolved = resolve_draft(payload.draftState)
+    base_blue_slots = resolved["blue_slots"]
+    base_red_slots = resolved["red_slots"]
 
     rows = []
     row_options = []
+    id_to_name = champion_id_map()
     for option in payload.options:
-        champion_name = option.championName or option.championId
+        champion_name = resolve_name(option.championName or option.championId, id_to_name)
         if not champion_name:
             continue
 
@@ -774,29 +444,17 @@ def predict_options_endpoint(payload: PredictOptionsPayload, request: Request) -
         else:
             red_slots[option.role] = champion_name
 
-        try:
-            rows.append(build_model_row(blue_slots, red_slots, request))
-            row_options.append(option)
-        except Exception as exc:
-            print(f"Failed to build option row for {option.entityId}: {exc}")
+        rows.append(build_model_row(blue_slots, red_slots, model_state(request)))
+        row_options.append(option)
 
     if not rows:
         return {"optionWinRates": {}}
 
-    feature_cols = request.app.state.feature_cols
-    calibrated_model = request.app.state.calibrated_model
-    X_test = pd.DataFrame(rows)
-    X_features = X_test[feature_cols].copy()
-
-    cat_cols = [c + "_enc" for c in ROLE_COLS] + ["patch_enc", "league_enc"]
-    for c in cat_cols:
-        if c in X_features:
-            X_features[c] = X_features[c].astype("category")
-
-    probs = calibrated_model.predict_proba(X_features)
+    state = model_state(request)
+    blue_probabilities = predict_blue_win_probability(state.calibrated_model, rows, state.feature_cols)
     option_win_rates = {}
-    for option, prob in zip(row_options, probs):
-        blue_win_rate = float(prob[1]) * 100
+    for option, blue_prob in zip(row_options, blue_probabilities):
+        blue_win_rate = blue_prob * 100.0
         option_win_rates[option.entityId] = (
             blue_win_rate
             if payload.draftState.activeTeam == "blue"
@@ -808,259 +466,76 @@ def predict_options_endpoint(payload: PredictOptionsPayload, request: Request) -
 
 @router.get("/champions/metrics")
 def get_champions_metrics(request: Request) -> dict:
-    """Get pre-loaded actual champion win rates and synergy pairs from parquet caches."""
+    state = model_state(request)
     return {
-        "winrates": request.app.state.wr_map,
-        "synergies": {f"{c1}_{c2}": rate for (c1, c2), rate in request.app.state.pair_map.items()},
-        "global_avg_wr": request.app.state.global_avg_wr
+        "winrates": state.wr_map,
+        "role_winrates": state.champ_role_wr_map,
+        "synergies": {f"{first}_{second}": rate for (first, second), rate in state.pair_map.items()},
+        "global_avg_wr": state.global_avg_wr,
+        "model_version": getattr(state, "model_version", "v2"),
     }
 
 
 @router.get("/champions/op")
 def get_op_champions(request: Request) -> dict:
-    """Get mathematically proven OP champions based on global mean SHAP contribution."""
-    op_champions = getattr(request.app.state, "op_champions", [])
-    return {"op_champions": op_champions}
+    return {
+        "op_champions": getattr(request.app.state, "op_champions", []),
+        "role_strengths": getattr(request.app.state, "role_strengths", []),
+        "model_version": getattr(request.app.state, "model_version", "v2"),
+    }
 
 
-# --- Root Level Router for Specialist Tools (MODEL_API Compatibility) ---
 root_router = APIRouter()
 
-class SimplePredictPayload(BaseModel):
-    blue_picks: List[str]
-    red_picks: List[str]
-    bans: List[str]
-
-class SimpleExplainPayload(BaseModel):
-    blue_picks: List[str]
-    red_picks: List[str]
-
-def assign_picks_to_roles(picks: List[str], is_blue: bool, encoders) -> dict:
-    role_keys = ["top", "jng", "mid", "bot", "sup"]
-    prefix = "blue_" if is_blue else "red_"
-    
-    import json
-    import os
-    frontend_json_path = r"c:\Dev\group-projects\WIF3009-project\frontend\src\assets\data\champions.json"
-    champ_roles = {}
-    if os.path.exists(frontend_json_path):
-        try:
-            with open(frontend_json_path, "r", encoding="utf-8") as f:
-                champ_data = json.load(f)
-                for c in champ_data.get("champions", []):
-                    tags = c.get("tags", [])
-                    name = c.get("name")
-                    if "Support" in tags:
-                        best = "sup"
-                    elif "Marksman" in tags:
-                        best = "bot"
-                    elif "Mage" in tags or "Assassin" in tags:
-                        best = "mid"
-                    elif "Tank" in tags:
-                        best = "top"
-                    elif "Fighter" in tags:
-                        best = "jng"
-                    else:
-                        best = "mid"
-                    champ_roles[name] = best
-        except Exception:
-            pass
-
-    assigned = {}
-    remaining_roles = set(role_keys)
-    for champ in picks:
-        pref = champ_roles.get(champ, "mid")
-        if pref in remaining_roles:
-            assigned[pref] = champ
-            remaining_roles.remove(pref)
-        else:
-            if remaining_roles:
-                fallback = list(remaining_roles)[0]
-                assigned[fallback] = champ
-                remaining_roles.remove(fallback)
-                
-    for r in role_keys:
-        if r not in assigned:
-            col_name = f"{prefix}{r}"
-            assigned[r] = encoders[col_name].classes_[0]
-            
-    return {f"{prefix}{r}": val for r, val in assigned.items()}
 
 @root_router.post("/predict")
 def root_predict_endpoint(payload: SimplePredictPayload, request: Request) -> dict:
-    wr_map = request.app.state.wr_map
-    global_avg_wr = request.app.state.global_avg_wr
-    pair_map = request.app.state.pair_map
-    calibrated_model = request.app.state.calibrated_model
-    encoders = request.app.state.encoders
-    feature_cols = request.app.state.feature_cols
+    if not payload.blue_picks and not payload.red_picks:
+        return {"blue_win_probability": 0.5}
 
-    def team_synergy_score(champs):
-        scores = []
-        valid = [c for c in champs if pd.notna(c) and c != ""]
-        for c1, c2 in combinations(valid, 2):
-            key = tuple(sorted([c1, c2]))
-            if key in pair_map:
-                scores.append(pair_map[key])
-        return np.mean(scores) if scores else 0.5
+    blue_slots, red_slots = slots_from_simple_picks(
+        payload.blue_picks,
+        payload.red_picks,
+        model_state(request),
+    )
+    return {"blue_win_probability": score_blue_probability(request, blue_slots, red_slots)}
 
-    role_cols = [
-        "blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup",
-        "red_top", "red_jng", "red_mid", "red_bot", "red_sup"
-    ]
-
-    blue_role_picks = assign_picks_to_roles(payload.blue_picks, True, encoders)
-    red_role_picks = assign_picks_to_roles(payload.red_picks, False, encoders)
-
-    row = {}
-    row.update(blue_role_picks)
-    row.update(red_role_picks)
-
-    row["patch"] = "16.1"
-    row["league"] = "LCK"
-    row["blue_team"] = encoders["blue_team"].classes_[0]
-    row["red_team"] = encoders["red_team"].classes_[0]
-
-    for col in role_cols:
-        row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
-
-    blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
-    red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
-
-    row["blue_synergy"] = team_synergy_score([row[r] for r in blue_roles])
-    row["red_synergy"] = team_synergy_score([row[r] for r in red_roles])
-    row["blue_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in blue_roles])
-    row["red_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in red_roles])
-    row["wr_diff"] = row["blue_team_avg_wr"] - row["red_team_avg_wr"]
-    row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
-
-    def encode_val(encoder_name, val):
-        le = encoders[encoder_name]
-        if val in le.classes_:
-            return le.transform([val])[0]
-        return le.transform([le.classes_[0]])[0]
-
-    for col in role_cols:
-        row[f"{col}_enc"] = encode_val(col, row[col])
-
-    row["patch_enc"] = encode_val("patch", row["patch"])
-    row["league_enc"] = encode_val("league", row["league"])
-    row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
-    row["red_team_enc"] = encode_val("red_team", row["red_team"])
-
-    X_test = pd.DataFrame([row])
-    X_features = X_test[feature_cols].copy()
-
-    cat_cols = [c + "_enc" for c in role_cols] + ["patch_enc", "league_enc"]
-    for c in cat_cols:
-        X_features[c] = X_features[c].astype("category")
-
-    probs = calibrated_model.predict_proba(X_features)
-    blue_win_prob = float(probs[0][1])
-
-    return {"blue_win_probability": blue_win_prob}
 
 @root_router.post("/explain")
 def root_explain_endpoint(payload: SimpleExplainPayload, request: Request) -> dict:
-    wr_map = request.app.state.wr_map
-    global_avg_wr = request.app.state.global_avg_wr
-    pair_map = request.app.state.pair_map
-    encoders = request.app.state.encoders
-    feature_cols = request.app.state.feature_cols
-    shap_explainer = request.app.state.shap_explainer
+    blue_slots, red_slots = slots_from_simple_picks(
+        payload.blue_picks,
+        payload.red_picks,
+        model_state(request),
+    )
+    row = build_model_row(blue_slots, red_slots, model_state(request))
+    if getattr(request.app.state, "shap_explainer", None) is None:
+        return {feature: 0.0 for feature in request.app.state.feature_cols}
+    return shap_contributions(request.app.state.shap_explainer, row, request.app.state.feature_cols)
 
-    def team_synergy_score(champs):
-        scores = []
-        valid = [c for c in champs if pd.notna(c) and c != ""]
-        for c1, c2 in combinations(valid, 2):
-            key = tuple(sorted([c1, c2]))
-            if key in pair_map:
-                scores.append(pair_map[key])
-        return np.mean(scores) if scores else 0.5
-
-    role_cols = [
-        "blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup",
-        "red_top", "red_jng", "red_mid", "red_bot", "red_sup"
-    ]
-
-    blue_role_picks = assign_picks_to_roles(payload.blue_picks, True, encoders)
-    red_role_picks = assign_picks_to_roles(payload.red_picks, False, encoders)
-
-    row = {}
-    row.update(blue_role_picks)
-    row.update(red_role_picks)
-
-    row["patch"] = "16.1"
-    row["league"] = "LCK"
-    row["blue_team"] = encoders["blue_team"].classes_[0]
-    row["red_team"] = encoders["red_team"].classes_[0]
-
-    for col in role_cols:
-        row[f"{col}_wr"] = wr_map.get(row[col], global_avg_wr)
-
-    blue_roles = ["blue_top", "blue_jng", "blue_mid", "blue_bot", "blue_sup"]
-    red_roles = ["red_top", "red_jng", "red_mid", "red_bot", "red_sup"]
-
-    row["blue_synergy"] = team_synergy_score([row[r] for r in blue_roles])
-    row["red_synergy"] = team_synergy_score([row[r] for r in red_roles])
-    row["blue_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in blue_roles])
-    row["red_team_avg_wr"] = np.mean([row[f"{r}_wr"] for r in red_roles])
-    row["wr_diff"] = row["blue_team_avg_wr"] - row["red_team_avg_wr"]
-    row["synergy_diff"] = row["blue_synergy"] - row["red_synergy"]
-
-    def encode_val(encoder_name, val):
-        le = encoders[encoder_name]
-        if val in le.classes_:
-            return le.transform([val])[0]
-        return le.transform([le.classes_[0]])[0]
-
-    for col in role_cols:
-        row[f"{col}_enc"] = encode_val(col, row[col])
-
-    row["patch_enc"] = encode_val("patch", row["patch"])
-    row["league_enc"] = encode_val("league", row["league"])
-    row["blue_team_enc"] = encode_val("blue_team", row["blue_team"])
-    row["red_team_enc"] = encode_val("red_team", row["red_team"])
-
-    X_test = pd.DataFrame([row])
-    X_features = X_test[feature_cols].copy()
-
-    cat_cols = [c + "_enc" for c in role_cols] + ["patch_enc", "league_enc"]
-    for c in cat_cols:
-        X_features[c] = X_features[c].astype("category")
-
-    shap_values = shap_explainer(X_features)
-    contributions = {}
-    for feat, val in zip(feature_cols, shap_values.values[0]):
-        contributions[feat] = float(val)
-
-    return contributions
 
 @root_router.get("/meta/{champion_name}")
 def root_meta_endpoint(champion_name: str, request: Request, patch: str = "current") -> dict:
-    wr_map = request.app.state.wr_map
-    global_avg_wr = request.app.state.global_avg_wr
-    op_champions = getattr(request.app.state, "op_champions", [])
+    state = model_state(request)
+    win_rate = float(state.wr_map.get(champion_name, state.global_avg_wr))
 
-    win_rate = wr_map.get(champion_name, global_avg_wr)
-    
-    # Try to find shap contribution
-    mean_shap = 0.0
-    for op in op_champions:
-        if op["champion"] == champion_name:
-            mean_shap = op["mean_contribution"]
+    mean_contribution = 0.0
+    best_role = None
+    for champion in getattr(state, "op_champions", []):
+        if champion["champion"] == champion_name:
+            mean_contribution = float(champion.get("mean_contribution", 0.0))
+            best_role = champion.get("role")
             break
 
-    # Pick rate can be calculated deterministically or generated plausibly
-    import random
-    random.seed(sum(ord(c) for c in champion_name))
+    random.seed(sum(ord(char) for char in champion_name))
     pick_rate = round(random.uniform(0.05, 0.25), 4)
 
     return {
         "champion": champion_name,
         "patch": patch,
-        "win_rate": float(win_rate),
+        "win_rate": win_rate,
         "pick_rate": float(pick_rate),
-        "mean_shap_contribution": float(mean_shap)
+        "best_role": best_role,
+        "mean_shap_contribution": mean_contribution,
+        "model_version": getattr(state, "model_version", "v2"),
     }
-
