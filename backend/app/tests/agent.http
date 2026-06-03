@@ -1,0 +1,33 @@
+### Test 1: Direct Telemetry Format (Thin Agent Translation Node)
+POST http://127.0.0.1:8000/api/v1/agent
+Content-Type: application/json
+
+{
+  "expected_base_win_prob": 0.51,
+  "top_drivers": [
+    {
+      "feature": "wr_diff",
+      "value": 0.08,
+      "impact_on_win_prob": 0.12
+    },
+    {
+      "feature": "red_top_enc",
+      "value": 42.0,
+      "impact_on_win_prob": -0.06
+    }
+  ]
+}
+
+### Test 2: Legacy Draft State Format (In-Route Telemetry Generation Fallback)
+POST http://127.0.0.1:8000/api/v1/agent
+Content-Type: application/json
+
+{
+  "draft_state": {
+    "blue_picks": ["Jinx", "Thresh", "Garen"],
+    "red_picks": ["Zed", "Leona", "Darius"],
+    "bans": ["Yasuo", "Yone", "Ahri", "LeBlanc"]
+  },
+  "user_question": "Who should we pick next?",
+  "interaction_id": null
+}

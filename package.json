@@ -1,0 +1,13 @@
+{
+    "name": "wif3009-project",
+    "private": true,
+    "scripts": {
+        "dev:frontend": "npm run dev --prefix frontend",
+        "dev:backend": "cd backend && cross-env PYTHONUTF8=1 .venv\\Scripts\\fastapi dev app/main.py",
+        "dev": "concurrently --kill-others -n \"frontend,backend\" -c \"cyan,green\" \"npm run dev:frontend\" \"npm run dev:backend\""
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2",
+        "cross-env": "^7.0.3"
+    }
+}
