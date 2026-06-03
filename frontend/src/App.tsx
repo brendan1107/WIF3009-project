@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import championData from './assets/data/champions.json'
 import './App.css'
 
@@ -505,6 +505,8 @@ function App() {
   const [sortKey, setSortKey] = useState<SortKey>('winRate')
   const [modelOptionWinRates, setModelOptionWinRates] = useState<Record<string, number>>({})
   const [optionWinRatesLoading, setOptionWinRatesLoading] = useState(false)
+  const [frozenChampionOptions, setFrozenChampionOptions] = useState<ChampionOption[] | null>(null)
+  const lastRenderedChampionOptionsRef = useRef<ChampionOption[]>([])
 
   const currentStep = draftSteps[stepIndex]
   const isComplete = !currentStep
@@ -729,10 +731,12 @@ function App() {
     })
   }, [filteredChampionOptions, sortKey, getRealMetrics])
 
+  const displayedChampionOptions = frozenChampionOptions ?? visibleChampionOptions
+
   const highlightedOptionIds = useMemo(() => {
     const bestByRole = new Map<Role, { entityId: string; winRate: number }>()
 
-    for (const option of visibleChampionOptions) {
+    for (const option of displayedChampionOptions) {
       if (!allowedOptionRoles.has(option.role)) continue
 
       const winRate = getRealMetrics(option.champion, option.role).winRate
@@ -743,11 +747,12 @@ function App() {
     }
 
     return new Set([...bestByRole.values()].map((option) => option.entityId))
-  }, [allowedOptionRoles, getRealMetrics, visibleChampionOptions])
+  }, [allowedOptionRoles, displayedChampionOptions, getRealMetrics])
 
   useEffect(() => {
     if (!canSelectChampion || activeSlotIndex === undefined) {
       setOptionWinRatesLoading(false)
+      setFrozenChampionOptions(null)
       return
     }
 
@@ -756,6 +761,7 @@ function App() {
     if (filteredChampionOptions.length === 0) {
       setModelOptionWinRates({})
       setOptionWinRatesLoading(false)
+      setFrozenChampionOptions(null)
       return
     }
 
@@ -767,6 +773,11 @@ function App() {
       stepIndex,
     }
 
+    setFrozenChampionOptions(
+      lastRenderedChampionOptionsRef.current.length > 0
+        ? lastRenderedChampionOptionsRef.current
+        : filteredChampionOptions,
+    )
     setOptionWinRatesLoading(true)
     requestOptionWinRates(draftState, filteredChampionOptions)
       .then((result) => {
@@ -778,7 +789,10 @@ function App() {
         console.error('Batch option winrates failed:', error)
       })
       .finally(() => {
-        if (!cancelled) setOptionWinRatesLoading(false)
+        if (!cancelled) {
+          setFrozenChampionOptions(null)
+          setOptionWinRatesLoading(false)
+        }
       })
 
     return () => {
@@ -786,16 +800,20 @@ function App() {
     }
   }, [activeSlotIndex, activeTeam, blueSlots, canSelectChampion, filteredChampionOptions, redSlots, stepIndex])
 
+  useEffect(() => {
+    lastRenderedChampionOptionsRef.current = displayedChampionOptions
+  }, [displayedChampionOptions])
+
   const statRows = useMemo(() => {
-    return visibleChampionOptions.slice(0, 5).map((option) => ({
+    return displayedChampionOptions.slice(0, 5).map((option) => ({
       champion: option.champion,
       metrics: getRealMetrics(option.champion, option.role),
       role: option.role,
     }))
-  }, [visibleChampionOptions, getRealMetrics])
+  }, [displayedChampionOptions, getRealMetrics])
 
   function selectChampion(championId: string, role: Role) {
-    if (!canSelectChampion) return
+    if (!canSelectChampion || optionWinRatesLoading) return
     setPendingChampionId(championId)
     setPendingRole(role)
   }
@@ -1053,11 +1071,11 @@ function App() {
                 </div>
               )}
 
-              <div className="champion-grid">
-                {visibleChampionOptions.length === 0 && (
+              <div className={`champion-grid ${optionWinRatesLoading ? 'is-loading' : ''}`} aria-busy={optionWinRatesLoading}>
+                {displayedChampionOptions.length === 0 && (
                   <div className="champion-card placeholder">No matches</div>
                 )}
-                {visibleChampionOptions.map(({ champion, entityId, role }) => {
+                {displayedChampionOptions.map(({ champion, entityId, role }) => {
                   const metrics = getRealMetrics(champion, role)
                   const isHighlighted = highlightedOptionIds.has(entityId)
                   const isSelected = pendingChampionId === champion.id && pendingRole === role
@@ -1065,7 +1083,7 @@ function App() {
                   return (
                     <button
                       className={`champion-card ${isSelected ? 'selected' : ''} ${isHighlighted ? 'recommended' : ''}`}
-                      disabled={!canSelectChampion}
+                      disabled={!canSelectChampion || optionWinRatesLoading}
                       key={entityId}
                       onClick={() => selectChampion(champion.id, role)}
                       type="button"
@@ -1083,6 +1101,12 @@ function App() {
                     </button>
                   )
                 })}
+                {optionWinRatesLoading && (
+                  <div className="pool-loading" role="status" aria-live="polite">
+                    <span className="pool-loading-spinner" aria-hidden="true" />
+                    <strong>Updating winrates</strong>
+                  </div>
+                )}
               </div>
             </section>
 

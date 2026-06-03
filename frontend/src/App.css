@@ -754,6 +754,7 @@ button:disabled {
 }
 
 .champion-grid {
+  position: relative;
   display: grid;
   grid-row: 4;
   min-height: 0;
@@ -765,6 +766,52 @@ button:disabled {
   padding-right: 6px;
   scrollbar-color: rgba(201, 170, 113, 0.55) rgba(3, 8, 12, 0.5);
   scrollbar-width: thin;
+}
+
+.champion-grid.is-loading {
+  overflow: hidden;
+}
+
+.champion-grid.is-loading .champion-card {
+  filter: saturate(0.78) brightness(0.72);
+}
+
+.pool-loading {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 178px;
+  min-height: 112px;
+  place-items: center;
+  gap: 10px;
+  padding: 18px 20px;
+  color: var(--gold-bright);
+  border: 1px solid rgba(201, 170, 113, 0.42);
+  border-radius: 8px;
+  background: rgba(3, 8, 12, 0.86);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.44), inset 0 0 18px rgba(201, 170, 113, 0.08);
+  text-align: center;
+  text-transform: uppercase;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.pool-loading-spinner {
+  display: block;
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(201, 170, 113, 0.22);
+  border-top-color: var(--gold-bright);
+  border-radius: 50%;
+  box-shadow: 0 0 18px rgba(201, 170, 113, 0.24);
+  animation: poolSpin 0.85s linear infinite;
+}
+
+.pool-loading strong {
+  font-size: 12px;
+  letter-spacing: 0;
 }
 
 .champion-grid::-webkit-scrollbar {
@@ -1250,6 +1297,12 @@ button:disabled {
   100% {
     opacity: 0;
     transform: translate(-50%, -8px) scale(0.98);
+  }
+}
+
+@keyframes poolSpin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
