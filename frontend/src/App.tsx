@@ -56,6 +56,22 @@ type DraftPayload = {
   stepIndex: number
 }
 
+type ApiSlot = {
+  role: Role
+  champion?: string
+}
+
+type DraftApiPayload = {
+  bluePicks: ApiSlot[]
+  redPicks: ApiSlot[]
+  blueBans: string[]
+  redBans: string[]
+  activeTeam: Team
+  activeAction: DraftAction
+  activeRole?: Role
+  stepIndex: number
+}
+
 type Prediction = {
   blueWinRate: number
   redWinRate: number
@@ -80,26 +96,16 @@ const championIcons = import.meta.glob('./assets/champion/*.png', {
 const roles: Role[] = ['TOP', 'JUNGLE', 'MID', 'BOTTOM', 'SUPPORT']
 
 const draftSteps: DraftStep[] = [
-  { phase: 'Ban Phase 1', action: 'ban', team: 'blue', banIndex: 0, label: 'Blue Ban 1' },
-  { phase: 'Ban Phase 1', action: 'ban', team: 'red', banIndex: 0, label: 'Red Ban 1' },
-  { phase: 'Ban Phase 1', action: 'ban', team: 'blue', banIndex: 1, label: 'Blue Ban 2' },
-  { phase: 'Ban Phase 1', action: 'ban', team: 'red', banIndex: 1, label: 'Red Ban 2' },
-  { phase: 'Ban Phase 1', action: 'ban', team: 'blue', banIndex: 2, label: 'Blue Ban 3' },
-  { phase: 'Ban Phase 1', action: 'ban', team: 'red', banIndex: 2, label: 'Red Ban 3' },
   { phase: 'Pick Phase 1', action: 'pick', team: 'blue', slotIndex: 0, label: 'Blue Pick 1' },
-  { phase: 'Pick Phase 1', action: 'pick', team: 'red', slotIndex: 0, label: 'Red Pick 1' },
-  { phase: 'Pick Phase 1', action: 'pick', team: 'red', slotIndex: 1, label: 'Red Pick 2' },
+  { phase: 'Pick Phase 1', action: 'pick', team: 'red',  slotIndex: 0, label: 'Red Pick 1' },
+  { phase: 'Pick Phase 1', action: 'pick', team: 'red',  slotIndex: 1, label: 'Red Pick 2' },
   { phase: 'Pick Phase 1', action: 'pick', team: 'blue', slotIndex: 1, label: 'Blue Pick 2' },
   { phase: 'Pick Phase 1', action: 'pick', team: 'blue', slotIndex: 2, label: 'Blue Pick 3' },
-  { phase: 'Pick Phase 1', action: 'pick', team: 'red', slotIndex: 2, label: 'Red Pick 3' },
-  { phase: 'Ban Phase 2', action: 'ban', team: 'red', banIndex: 3, label: 'Red Ban 4' },
-  { phase: 'Ban Phase 2', action: 'ban', team: 'blue', banIndex: 3, label: 'Blue Ban 4' },
-  { phase: 'Ban Phase 2', action: 'ban', team: 'red', banIndex: 4, label: 'Red Ban 5' },
-  { phase: 'Ban Phase 2', action: 'ban', team: 'blue', banIndex: 4, label: 'Blue Ban 5' },
-  { phase: 'Pick Phase 2', action: 'pick', team: 'red', slotIndex: 3, label: 'Red Pick 4' },
+  { phase: 'Pick Phase 1', action: 'pick', team: 'red',  slotIndex: 2, label: 'Red Pick 3' },
+  { phase: 'Pick Phase 2', action: 'pick', team: 'red',  slotIndex: 3, label: 'Red Pick 4' },
   { phase: 'Pick Phase 2', action: 'pick', team: 'blue', slotIndex: 3, label: 'Blue Pick 4' },
   { phase: 'Pick Phase 2', action: 'pick', team: 'blue', slotIndex: 4, label: 'Blue Pick 5' },
-  { phase: 'Pick Phase 2', action: 'pick', team: 'red', slotIndex: 4, label: 'Red Pick 5' },
+  { phase: 'Pick Phase 2', action: 'pick', team: 'red',  slotIndex: 4, label: 'Red Pick 5' },
 ]
 
 const roleProfiles: Record<Role, Partial<Champion['info']>> = {
@@ -276,11 +282,31 @@ async function requestPrediction(payload: DraftPayload): Promise<Prediction> {
   const endpoint = import.meta.env.VITE_WINRATE_API_URL
   if (!endpoint) return localPrediction(payload)
 
+  const toChampionName = (championId?: string) =>
+    championId ? championById(championId)?.name ?? championId : undefined
+
+  const apiPayload: DraftApiPayload = {
+    bluePicks: payload.bluePicks.map((slot) => ({
+      role: slot.role,
+      champion: toChampionName(slot.championId),
+    })),
+    redPicks: payload.redPicks.map((slot) => ({
+      role: slot.role,
+      champion: toChampionName(slot.championId),
+    })),
+    blueBans: payload.blueBans.map((banId) => toChampionName(banId) ?? banId),
+    redBans: payload.redBans.map((banId) => toChampionName(banId) ?? banId),
+    activeTeam: payload.activeTeam,
+    activeAction: payload.activeAction,
+    activeRole: payload.activeRole,
+    stepIndex: payload.stepIndex,
+  }
+
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(apiPayload),
     })
 
     if (!response.ok) {
@@ -294,6 +320,7 @@ async function requestPrediction(payload: DraftPayload): Promise<Prediction> {
       source: 'backend',
     }
   } catch {
+    console.warn('Prediction API failed, using local fallback.')
     return localPrediction(payload)
   }
 }
@@ -342,12 +369,14 @@ function TeamPanel({
   feedback,
   slots,
   team,
+  onSlotClick,
 }: {
   activeSlotIndex?: number
   activeTeam: Team
   feedback: LockFeedback | null
   slots: Slot[]
   team: Team
+  onSlotClick?: (slotIndex: number) => void
 }) {
   return (
     <aside className={`team-panel ${team}`}>
@@ -360,12 +389,15 @@ function TeamPanel({
             feedback?.action === 'pick' &&
             feedback.team === team &&
             feedback.slotIndex === index
+          const isFilled = !!slot.championId
 
           return (
             <button
-              className={`draft-slot ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`}
+              className={`draft-slot ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''} ${isFilled && !isActive ? 'filled' : ''}`}
               key={`${slot.player}-${slot.role}`}
               type="button"
+              onClick={() => onSlotClick?.(index)}
+              title={isFilled ? `Click to change ${champion?.name}` : undefined}
             >
               <span className="role-sigil">{positionIcon[slot.role]}</span>
               <ChampionPortrait id={slot.championId} alt={champion?.name ?? `${slot.player} open pick`} />
@@ -423,7 +455,7 @@ function App() {
   const activeTeam = currentStep?.team ?? 'blue'
   const activeRole = currentPickRole(currentStep, blueSlots, redSlots)
   const focusRole = activeRole ?? nextPickRole(stepIndex, blueSlots, redSlots)
-  const activeBanIndex = currentStep?.action === 'ban' ? currentStep.banIndex : undefined
+
   const activeSlotIndex = currentStep?.action === 'pick' ? currentStep.slotIndex : undefined
   const pendingChampion = championById(pendingChampionId)
 
@@ -572,15 +604,20 @@ function App() {
   useEffect(() => {
     let cancelled = false
 
+    // Call backend whenever the draft state changes:
+    // - during any pick step (including hovering candidate champions)
+    // - when draft is complete (currentStep is undefined but slots are filled)
     const isPickStep = currentStep?.action === 'pick'
-    const hasPending = !!pendingChampionId
-
-    if (isPickStep || !hasPending) {
+    const isDraftComplete = !currentStep && (
+      blueSlots.some(s => s.championId) || redSlots.some(s => s.championId)
+    )
+    if (isPickStep || isDraftComplete) {
       requestPrediction(draftPayload).then((nextPrediction) => {
         if (!cancelled) setPrediction(nextPrediction)
       })
     }
 
+    const hasPending = !!pendingChampionId
     const shouldCallAdvisor = !hasPending
 
     if (shouldCallAdvisor) {
@@ -624,7 +661,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [draftPayload, pendingChampionId, currentStep?.action])
+  }, [draftPayload, pendingChampionId, currentStep?.action, blueSlots, redSlots])
 
   const selectedIds = useMemo(() => {
     return new Set([
@@ -687,6 +724,24 @@ function App() {
   function selectChampion(championId: string) {
     if (!currentStep) return
     setPendingChampionId(championId)
+  }
+
+  // Jump back to a previously filled slot so the user can repick it
+  function handleSlotClick(team: Team, slotIndex: number) {
+    const stepIdx = draftSteps.findIndex(
+      (s) => s.action === 'pick' && s.team === team && s.slotIndex === slotIndex,
+    )
+    if (stepIdx === -1) return
+    // Clear the existing champion from that slot
+    const clearSlot = (current: Slot[]) =>
+      current.map((slot, i) => (i === slotIndex ? { ...slot, championId: undefined } : slot))
+    if (team === 'blue') {
+      setBlueSlots(clearSlot)
+    } else {
+      setRedSlots(clearSlot)
+    }
+    setPendingChampionId(undefined)
+    setStepIndex(stepIdx)
   }
 
   function confirmSelection() {
@@ -765,46 +820,17 @@ function App() {
                 <strong>{prediction.blueWinRate.toFixed(1)}%</strong>
                 <em>Projected Win Chance</em>
               </div>
-              <div className="scoreboard-bans blue">
-                {blueBans.map((banId, index) => {
-                  const champion = championById(banId)
-                  const isActive = activeTeam === 'blue' && index === activeBanIndex
-                  const isLocked =
-                    feedback?.action === 'ban' &&
-                    feedback.team === 'blue' &&
-                    feedback.banIndex === index
-                  return (
-                    <span className={`ban-chip ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`} key={`blue-ban-${index}`}>
-                      <ChampionPortrait id={banId} alt={champion?.name ?? 'Empty ban'} />
-                      {banId && <i aria-hidden="true">x</i>}
-                    </span>
-                  )
-                })}
-              </div>
             </div>
             <div className="team-score red">
-              <div className="scoreboard-bans red">
-                {redBans.map((banId, index) => {
-                  const champion = championById(banId)
-                  const isActive = activeTeam === 'red' && index === activeBanIndex
-                  const isLocked =
-                    feedback?.action === 'ban' &&
-                    feedback.team === 'red' &&
-                    feedback.banIndex === index
-                  return (
-                    <span className={`ban-chip ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`} key={`red-ban-${index}`}>
-                      <ChampionPortrait id={banId} alt={champion?.name ?? 'Empty ban'} />
-                      {banId && <i aria-hidden="true">x</i>}
-                    </span>
-                  )
-                })}
-              </div>
               <div>
                 <span>Red Team</span>
                 <strong>{prediction.redWinRate.toFixed(1)}%</strong>
                 <em>Projected Win Chance</em>
               </div>
               <TeamMark team="red" />
+            </div>
+            <div className="prediction-source" aria-live="polite">
+              Source: {prediction.source === 'backend' ? 'Backend model' : 'Local fallback'}
             </div>
           </section>
 
@@ -815,6 +841,7 @@ function App() {
               feedback={feedback}
               slots={blueSlots}
               team="blue"
+              onSlotClick={(i) => handleSlotClick('blue', i)}
             />
 
             <section className="champion-board" aria-label="Champion selection">
@@ -924,6 +951,7 @@ function App() {
               feedback={feedback}
               slots={redSlots}
               team="red"
+              onSlotClick={(i) => handleSlotClick('red', i)}
             />
           </section>
 

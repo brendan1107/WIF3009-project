@@ -187,6 +187,20 @@ button:disabled {
   overflow: hidden;
 }
 
+.prediction-source {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: 6px;
+  padding: 4px 12px;
+  border: 1px solid rgba(201, 170, 113, 0.3);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(7, 12, 16, 0.7);
+}
+
 .team-score {
   display: flex;
   align-items: center;
@@ -1849,4 +1863,4 @@ button:disabled {
 
 .recommendation-num-champ strong {
   font-weight: 900;
-}
+}
