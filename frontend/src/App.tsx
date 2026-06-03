@@ -242,60 +242,135 @@ function teamScore(slots: Slot[]) {
   }, 0)
 }
 
+// function localPrediction(payload: DraftPayload): Prediction {
+//   const blueFilled = payload.bluePicks.filter((slot) => slot.championId).length
+//   const redFilled = payload.redPicks.filter((slot) => slot.championId).length
+//   if (blueFilled === 0 && redFilled === 0) {
+//     return {
+//       blueWinRate: 50.0,
+//       redWinRate: 50.0,
+//       source: 'local',
+//     }
+//   }
+
+//   const blueScore = teamScore(payload.bluePicks)
+//   const redScore = teamScore(payload.redPicks)
+//   const blueBans = payload.blueBans.filter(Boolean).length
+//   const redBans = payload.redBans.filter(Boolean).length
+//   const banPressure = (redBans - blueBans) * 0.18
+//   const activeBonus = payload.activeTeam === 'blue' ? 0.35 : -0.35
+//   const blueWinRate = clamp(
+//     50 + (blueScore - redScore) * 0.16 + (blueFilled - redFilled) * 0.72 + banPressure + activeBonus,
+//     38,
+//     62,
+//   )
+
+//   return {
+//     blueWinRate: Number(blueWinRate.toFixed(1)),
+//     redWinRate: Number((100 - blueWinRate).toFixed(1)),
+//     source: 'local',
+//   }
+// }
+
+// async function requestPrediction(payload: DraftPayload): Promise<Prediction> {
+//   const endpoint = import.meta.env.VITE_WINRATE_API_URL
+//   if (!endpoint) return localPrediction(payload)
+
+//   try {
+//     const response = await fetch(endpoint, {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify(payload),
+//     })
+
+//     if (!response.ok) {
+//       throw new Error(`Prediction API returned ${response.status}`)
+//     }
+
+//     const result = (await response.json()) as { blueWinRate: number; redWinRate?: number }
+//     return {
+//       blueWinRate: Number(result.blueWinRate.toFixed(1)),
+//       redWinRate: Number((result.redWinRate ?? 100 - result.blueWinRate).toFixed(1)),
+//       source: 'backend',
+//     }
+//   } catch {
+//     return localPrediction(payload)
+//   }
+// }
+
+function getDraftedChampionNames(bluePicks: Slot[], redPicks: Slot[]): string[] {
+  // Extract just the champion names in the order they were picked to check against the script
+  const picks: string[] = []
+
+  // The exact pick order sequence (B1, R1, R2, B2, B3, R3, R4, B4, B5, R5)
+  // Mapping based on the initial slots layout in your app
+  const pickOrder = [
+    { team: 'blue', index: 0 }, // B1 (Top)
+    { team: 'red', index: 0 },  // R1 (Top)
+    { team: 'red', index: 1 },  // R2 (Jungle)
+    { team: 'blue', index: 1 }, // B2 (Jungle)
+    { team: 'blue', index: 2 }, // B3 (Mid)
+    { team: 'red', index: 2 },  // R3 (Mid)
+    { team: 'red', index: 3 },  // R4 (Bottom)
+    { team: 'blue', index: 3 }, // B4 (Bottom)
+    { team: 'blue', index: 4 }, // B5 (Support)
+    { team: 'red', index: 4 },  // R5 (Support)
+  ]
+
+  for (const step of pickOrder) {
+    const slot = step.team === 'blue' ? bluePicks[step.index] : redPicks[step.index]
+    if (slot && slot.championId) {
+      const champ = championById(slot.championId)
+      if (champ) picks.push(champ.name)
+    }
+  }
+  return picks
+}
+
 function localPrediction(payload: DraftPayload): Prediction {
-  const blueFilled = payload.bluePicks.filter((slot) => slot.championId).length
-  const redFilled = payload.redPicks.filter((slot) => slot.championId).length
-  if (blueFilled === 0 && redFilled === 0) {
-    return {
-      blueWinRate: 50.0,
-      redWinRate: 50.0,
-      source: 'local',
+  const currentDraft = getDraftedChampionNames(payload.bluePicks, payload.redPicks)
+  const pickCount = currentDraft.length
+
+  if (pickCount === 0) {
+    return { blueWinRate: 50.0, redWinRate: 50.0, source: 'local' }
+  }
+
+  // 1. The exact script from your image
+  const goldenPathChamps = ["Nasus", "Gwen", "Lee Sin", "Gnar", "Lux", "Akali", "Kaisa", "Xayah", "Morgana", "Nami"]
+  const goldenPathRates = [41.1, 43.7, 25.7, 55.2, 69.6, 51.1, 52.7, 61.7, 53.5, 42.7]
+
+  // 2. Safe fallback (35-65 sweet spot) if they deviate
+  const safeFallbackRates = [53.2, 49.5, 47.1, 51.4, 55.8, 50.3, 48.2, 54.1, 58.5, 52.1]
+
+  const safeIndex = Math.min(pickCount - 1, 9)
+
+  // 3. Check if the current draft perfectly matches the script so far
+  let isOnScript = true
+  for (let i = 0; i < pickCount; i++) {
+    // Notice I changed "Alkali" to "Akali" to match standard spelling, 
+    // but the toLowerCase() protects against minor casing issues.
+    if (currentDraft[i]?.toLowerCase() !== goldenPathChamps[i].toLowerCase()) {
+      isOnScript = false
+      break
     }
   }
 
-  const blueScore = teamScore(payload.bluePicks)
-  const redScore = teamScore(payload.redPicks)
-  const blueBans = payload.blueBans.filter(Boolean).length
-  const redBans = payload.redBans.filter(Boolean).length
-  const banPressure = (redBans - blueBans) * 0.18
-  const activeBonus = payload.activeTeam === 'blue' ? 0.35 : -0.35
-  const blueWinRate = clamp(
-    50 + (blueScore - redScore) * 0.16 + (blueFilled - redFilled) * 0.72 + banPressure + activeBonus,
-    38,
-    62,
-  )
+  // 4. Assign the rate based on whether they followed the script
+  const blueWin = isOnScript ? goldenPathRates[safeIndex] : safeFallbackRates[safeIndex]
+  const redWin = Number((100.0 - blueWin).toFixed(1))
 
   return {
-    blueWinRate: Number(blueWinRate.toFixed(1)),
-    redWinRate: Number((100 - blueWinRate).toFixed(1)),
+    blueWinRate: blueWin,
+    redWinRate: redWin,
     source: 'local',
   }
 }
 
+// 5. Force the app to ALWAYS use the local prediction for the demo by ignoring the backend
 async function requestPrediction(payload: DraftPayload): Promise<Prediction> {
-  const endpoint = import.meta.env.VITE_WINRATE_API_URL
-  if (!endpoint) return localPrediction(payload)
-
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Prediction API returned ${response.status}`)
-    }
-
-    const result = (await response.json()) as { blueWinRate: number; redWinRate?: number }
-    return {
-      blueWinRate: Number(result.blueWinRate.toFixed(1)),
-      redWinRate: Number((result.redWinRate ?? 100 - result.blueWinRate).toFixed(1)),
-      source: 'backend',
-    }
-  } catch {
-    return localPrediction(payload)
-  }
+  // We instantly return the hardcoded local logic, guaranteeing zero latency 
+  // and perfect script execution for the presentation.
+  return Promise.resolve(localPrediction(payload))
 }
 
 function teamName(team: Team) {
